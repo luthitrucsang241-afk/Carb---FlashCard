@@ -335,6 +335,20 @@ main{padding:24px 24px 24px 4px}
 .qo{padding:20px 16px}
 .dh>div:first-child{display:flex;flex-direction:column}
 .dh>div:first-child>.card{flex:1}
+
+nav a{white-space:nowrap}
+@media(min-width:901px){nav{width:186px}nav a{padding-left:12px;padding-right:8px}}
+.qwrap>.card>.row:last-child{margin-top:0!important}
+.qwrap>.card .qtypes{flex:1;grid-auto-rows:1fr;margin-bottom:20px}
+.qwrap>.card .qo{justify-content:center}
+.qwrap>.card .qcnt{margin-bottom:22px}
+.ldo{display:grid;gap:16px;margin-bottom:16px}
+.ldo .card{margin-bottom:0}
+.ldo .lp{max-width:none;margin-bottom:14px}
+.ldo>.card:last-child{display:flex;flex-direction:column}
+.ldo textarea{flex:1;min-height:220px;resize:vertical}
+@media(min-width:901px){.ldo{grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}}
+#lh{max-height:260px;overflow-y:auto;padding-right:6px;scrollbar-width:thin;scrollbar-color:var(--bd) transparent}
 </style></head><body>
 <div class="app"><nav id="nav"></nav><main><div class="top">
 <input id="q" placeholder="Tìm từ vựng…"><span class="date" id="dt"></span>
@@ -613,8 +627,8 @@ const ytSrc=(x,a)=>`https://www.youtube-nocookie.com/embed/${x.yt}?rel=0&playsin
 function vDo(){const x=S.listen.find(a=>a.id===LD);if(!x){LD=null;return vListen()}
  const H=S.dict.filter(d=>d.lid===x.id).reverse();
  $('#v').innerHTML=`<div class="row"><button class="g" onclick="LD=null;vListen()">‹ Quay lại</button></div><h2>${esc(x.title)} <span class="tag" style="font-size:.5em;vertical-align:middle">${esc(x.topic)}</span></h2>
- <div class="card"><div class="lp" id="lp"></div><div class="lrow"><button class="g" onclick="lReplay()">Nghe lại đoạn</button>${x.kind==='yt'?`<a class="mut" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=${x.yt}${x.start?'&t='+x.start:''}">Mở trên YouTube</a>`:`<select style="width:auto" onchange="lRate(this.value)"><option value="0.75">Chậm 0.75x</option><option value="1" selected>Bình thường 1x</option><option value="1.25">Nhanh 1.25x</option></select>`}</div></div>
- <div class="card"><h3>Viết lại những gì bạn nghe được</h3><textarea id="ltx" rows="8" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Nghe video rồi gõ lại nội dung…" oninput="$('#lwc').textContent=toks(this.value).length+' từ'" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')lGrade()"></textarea><div class="row" style="margin-top:10px"><button onclick="lGrade()">Chấm điểm</button><span class="mut" id="lwc">0 từ</span><span class="mut">Ctrl + Enter để chấm nhanh</span></div></div>
+ <div class="ldo"><div class="card"><div class="lp" id="lp"></div><div class="lrow"><button class="g" onclick="lReplay()">Nghe lại đoạn</button>${x.kind==='yt'?`<a class="mut" target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=${x.yt}${x.start?'&t='+x.start:''}">Mở trên YouTube</a>`:`<select style="width:auto" onchange="lRate(this.value)"><option value="0.75">Chậm 0.75x</option><option value="1" selected>Bình thường 1x</option><option value="1.25">Nhanh 1.25x</option></select>`}</div></div>
+ <div class="card"><h3>Viết lại những gì bạn nghe được</h3><textarea id="ltx" rows="10" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Nghe video rồi gõ lại nội dung…" oninput="$('#lwc').textContent=toks(this.value).length+' từ'" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')lGrade()"></textarea><div class="row" style="margin-top:10px"><button onclick="lGrade()">Chấm điểm</button><span class="mut" id="lwc">0 từ</span><span class="mut">Ctrl + Enter để chấm nhanh</span></div></div></div>
  <div id="lres"></div><div class="card qh"><h3>Lịch sử bài này</h3><div id="lh">${dRows(H)||'<p class="mut">Chưa có lần làm nào.</p>'}</div></div>`;
  lMount(x)}
 async function lMount(x){const b=$('#lp');if(LU){URL.revokeObjectURL(LU);LU=''}
