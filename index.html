@@ -511,11 +511,11 @@ nav a{white-space:nowrap}
 
  /* Listening: tiêu đề cả hàng, thông tin 1 dòng, nhãn + nút cùng hàng */
  .ls .w{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:14px 0}
- .ls .w:has(>button)::after{display:none}
+ .ls .w:has(>button)::after{display:block;content:"";order:0;flex:1 0 100%;height:0}
  .ls .w>.m{order:-2;flex:1 1 100%}
  .ls .w>.m small{display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  .ls .w>.tag{order:-1;max-width:100%;overflow:hidden;text-overflow:ellipsis}
- .ls .w>button:first-of-type{margin-left:auto}
+ .ls .w>button{flex:1 1 0;min-width:0;white-space:nowrap}
  .qh .qr:has(.go){display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:12px 4px}
  .qh .qr:has(.go) .m{flex:1 1 100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
  .qh .qr:has(.go) .go{margin-left:auto}
