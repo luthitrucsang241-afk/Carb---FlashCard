@@ -370,7 +370,7 @@ nav a{white-space:nowrap}
 /* ===== Giao diện điện thoại (≤800px) ===== */
 .mlogo,#bn,#bm{display:none}
 @media(max-width:800px){
- html{zoom:1!important;-webkit-text-size-adjust:100%}
+ html{zoom:.85!important;-webkit-text-size-adjust:100%}
  body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;overflow-x:hidden}
  .app{min-height:100vh!important;width:100%!important;margin:0!important;border-radius:0!important;padding:0!important;background:var(--bg)}
  nav#nav{display:none!important}
@@ -387,7 +387,7 @@ nav a{white-space:nowrap}
  .grid{grid-template-columns:1fr 1fr;gap:10px}
  .grid>.stat:last-child:nth-child(odd){grid-column:1/-1}
  .stat{padding:14px}.stat b{font-size:1.9rem}
- input,select,textarea{font-size:16px}
+ input,select,textarea{font-size:19px}
  .scene{height:min(56vh,360px);max-width:100%}
  .big{font-size:1.7rem}
  .opt{padding:14px 16px}
@@ -491,6 +491,56 @@ nav a{white-space:nowrap}
 .sy-i{display:flex;flex-direction:column;gap:2px;margin:2px 0 8px;font-size:.85rem;overflow-wrap:anywhere}.sy-i span{color:var(--mut)}
 .sy-b{width:100%}
 .qo,.qo *{text-wrap:balance}.qo small,.qo span:last-child{text-wrap:balance;overflow-wrap:normal;word-break:keep-all}
+
+/* ===== Điện thoại v3: gọn lại 4 màn (zoom 85%) ===== */
+@media(max-width:800px){
+ /* Từ vựng: bộ lọc 2x2 + hàng nút, gộp trong 1 khung */
+ .vtool{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:12px;background:var(--card);border-radius:18px;box-shadow:var(--sh);margin-bottom:14px}
+ .vtool .vf{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .vtool .vf .cs{display:block;width:100%;min-width:0}
+ .vtool .vf select{width:100%}
+ .vtool .vf .csb{min-width:0;padding:9px 12px 9px 14px;font-size:.85rem;background:var(--bg);box-shadow:none}
+ .vtool .vact{display:grid;grid-template-columns:1fr 1.55fr 1fr 1fr;gap:6px;margin:0}
+ .vtool .vact button{width:100%;min-height:38px;padding:0 4px;font-size:.78rem;white-space:nowrap}
+ /* Từ vựng: nghĩa + định nghĩa chiếm cả bề ngang thẻ */
+ .vw .m{display:contents}
+ .vw .wt{grid-column:1;grid-row:1;min-width:0;align-self:center}
+ .vw .wv{grid-column:1/-1;grid-row:2;margin-top:6px}
+ .vw .wd{grid-column:1/-1;grid-row:3;margin-top:2px;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
+ .vw .vs{grid-row:4}
+
+ /* Listening: tiêu đề cả hàng, thông tin 1 dòng, nhãn + nút cùng hàng */
+ .ls .w{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:14px 0}
+ .ls .w:has(>button)::after{display:none}
+ .ls .w>.m{order:-2;flex:1 1 100%}
+ .ls .w>.m small{display:block;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .ls .w>.tag{order:-1;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+ .ls .w>button:first-of-type{margin-left:auto}
+ .qh .qr:has(.go){display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:12px 4px}
+ .qh .qr:has(.go) .m{flex:1 1 100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .qh .qr:has(.go) .go{margin-left:auto}
+
+ /* Quiz: 3 dạng bài gộp trong 1 khung, mỗi dạng là 1 dòng */
+ .qwrap>.card .qtypes{display:flex;flex-direction:column;gap:0;flex:0 0 auto;margin-bottom:18px;border:1px solid var(--bd);border-radius:16px;overflow:hidden;background:var(--bg)}
+ .qwrap>.card .qo{display:grid;grid-template-columns:44px minmax(0,1fr) 20px;grid-template-areas:"ic t r" "ic s r";align-items:center;column-gap:12px;row-gap:1px;border:0;border-radius:0;padding:12px 14px;background:transparent;box-shadow:none;transform:none;justify-content:stretch}
+ .qwrap>.card .qo+.qo{border-top:1px solid var(--bd)}
+ .qwrap>.card .qo .ic{grid-area:ic;width:44px;height:44px;border-radius:12px;background:var(--card);border:1px solid var(--bd);display:grid;place-items:center;font-size:1.05rem;line-height:1}
+ .qwrap>.card .qo:nth-child(3) .ic{padding-bottom:12px}
+ .qwrap>.card .qo b{grid-area:t;align-self:end;font-size:.98rem}
+ .qwrap>.card .qo small{grid-area:s;align-self:start;font-size:.82rem}
+ .qwrap>.card .qo::after{content:"";grid-area:r;width:18px;height:18px;border-radius:50%;border:2px solid var(--bd);background:transparent}
+ .qwrap>.card .qo.on{background:color-mix(in srgb,var(--ac) 9%,transparent);box-shadow:inset 3px 0 0 var(--ac)}
+ .qwrap>.card .qo.on .ic{background:var(--ac);border-color:var(--ac);color:var(--bt,#fff)}
+ .qwrap>.card .qo.on::after{border-color:var(--ac);background:radial-gradient(circle,var(--ac) 42%,transparent 48%)}
+
+ /* Flashcards: số thẻ mỗi phiên gọn 1 hàng (bỏ 10/20/50, giữ ô nhập + Tất cả) */
+ .fper{flex-wrap:nowrap;gap:8px}
+ .fper label{white-space:nowrap;flex:none}
+ .fper input{flex:1 1 60px;min-width:0;width:auto!important}
+ .fper button{flex:none;white-space:nowrap}
+ .fper .fp{display:none}
+}
+@media(max-width:350px){.vtool .vact{grid-template-columns:1fr 1fr}}
 </style></head><body>
 <div class="app"><nav id="nav"></nav><main><div class="top">
 <input id="q" placeholder="Tìm từ vựng…"><span class="date" id="dt"></span>
@@ -647,7 +697,7 @@ function fcReset(n){delete S.set['fci'+n];delete S.set['fcp'+n];save();vFlash()}
 function fcImg(n,f){if(!f)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,720/im.width),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);const d=c.toDataURL('image/jpeg',.82);fcAdj(n,d,st=>{S.set['fci'+n]=d;S.set['fcp'+n]=st;save();vFlash()})};im.src=r.result};r.readAsDataURL(f)}
 let FCT='';function setPer(v){S.set.per=Math.max(1,Math.min(9999,parseInt(v)||10));save();vFlash()}
 function vFlash(){if(!FC.l.length){const tp=FCT&&topics().includes(FCT)?FCT:'',all=S.words.filter(w=>!tp||w.topic===tp),due=all.filter(w=>w.box<0||w.due<=Date.now()),per=S.set.per;$('#v').innerHTML=`<h2>Flashcards</h2><div class="card"><div class="row"><label style="margin:0">Chủ đề</label><select id="ft" onchange="FCT=this.value;vFlash()"><option value="">Toàn bộ</option>${topics().map(t=>`<option ${t===tp?'selected':''}>${esc(t)}</option>`).join('')}</select></div>
-<div class="row" style="margin-top:12px"><label style="margin:0">Số thẻ mỗi phiên</label><input id="fn" type="number" min="1" value="${per}" style="width:90px" onchange="setPer(this.value)"><button class="g" onclick="setPer(10)">10</button><button class="g" onclick="setPer(20)">20</button><button class="g" onclick="setPer(50)">50</button><button class="g" onclick="setPer(9999)">Tất cả</button></div>
+<div class="row fper" style="margin-top:12px"><label style="margin:0">Số thẻ mỗi phiên</label><input id="fn" type="number" min="1" value="${per}" style="width:90px" onchange="setPer(this.value)"><button class="g fp" onclick="setPer(10)">10</button><button class="g fp" onclick="setPer(20)">20</button><button class="g fp" onclick="setPer(50)">50</button><button class="g" onclick="setPer(9999)">Tất cả</button></div>
 <div class="fcgrid"><div class="fcopt"><div class="fct"><b>Thẻ đến hạn / mới</b><div class="big" style="font-size:2rem;margin:6px 0">${due.length}</div><small class="mut">Phiên này học ${Math.min(per,due.length)} thẻ</small><div style="margin-top:12px"><button onclick="startFC($('#ft').value,'due')" ${due.length?'':'disabled'}>Bắt đầu học</button></div></div>${fcPic(1)}</div>
 <div class="fcopt"><div class="fct"><b>Tất cả thẻ</b><div class="big" style="font-size:2rem;margin:6px 0">${all.length}</div><small class="mut">Phiên này học ${Math.min(per,all.length)} thẻ</small><div style="margin-top:12px"><button class="g" onclick="startFC($('#ft').value,'all')" ${all.length?'':'disabled'}>Ôn tất cả</button></div></div>${fcPic(2)}</div></div>
 <div class="row" style="margin-top:16px;flex-wrap:wrap"><b>Học theo mục:</b>${[['again','Chưa nhớ'],['hard','Khó'],['good','Đã nhớ'],['fav','Yêu thích']].map(([k,n])=>`<button class="g" onclick="startFC($('#ft').value,'${k}')">${n} (${all.filter(w=>has(w,k)).length})</button>`).join('')}</div>
