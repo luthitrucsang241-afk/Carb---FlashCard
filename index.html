@@ -930,7 +930,7 @@ try{
  if(el)el.innerHTML='<span class="mut" style="font-size:.85rem">Không tải được Firebase ('+esc(e.message||e)+'). Hãy mở app bằng link Vercel, tắt trình chặn quảng cáo cho trang này rồi tải lại.</span>';
  throw e;
 }
-const cfg={apiKey:"AIzaSyA0f8cKAWMiU_cWAkw4jw5NoMuq89wXzrQ",authDomain:"crab-25de7.firebaseapp.com",projectId:"crab-25de7",storageBucket:"crab-25de7.firebasestorage.app",messagingSenderId:"161769266581",appId:"1:161769266581:web:a297b01065324e71dfaa9c"};
+const cfg={apiKey:"AIzaSyA0f8cKAWMiU_cWAkw4jw5NoMuq89wXzrQ",authDomain:location.hostname==='carb-flashcard.vercel.app'?location.hostname:'crab-25de7.firebaseapp.com',projectId:"crab-25de7",storageBucket:"crab-25de7.firebasestorage.app",messagingSenderId:"161769266581",appId:"1:161769266581:web:a297b01065324e71dfaa9c"};
 const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
 const TK=KEY+'_t',SK=KEY+'_s',CH=200000;
 let user=null,ready=false,busy=false,again=false,timer=0,st='',err='';
