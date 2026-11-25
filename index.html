@@ -506,8 +506,7 @@ function vFlash(){if(!FC.l.length){const tp=FCT&&topics().includes(FCT)?FCT:'',a
 <p class="mut" style="margin-top:14px">Mẹo: Space để lật thẻ, ← → để chuyển thẻ.</p></div>`;return}
  const w=FC.l[FC.i];if(!w){$('#v').innerHTML=`<div class="card"><h2> Hoàn thành phiên học!</h2><button onclick="FC.l=[];vFlash()">Quay lại</button></div>`;return}
  $('#v').innerHTML=`<div class="row"><button class="g" onclick="FC.l=[];vFlash()">‹ Quay lại</button></div><h2>Flashcards <small class="mut">${FC.i+1}/${FC.l.length}</small></h2><div class="scene" onclick="flip()"><div class="fc ${FC.f?'f':''}" id="fc"><div class="face"><div class="big">${esc(w.en)}</div><div class="mut">${esc(w.ipa)}</div><button class="g" onclick="event.stopPropagation();speak(FC.l[FC.i].en)"> Nghe</button></div><div class="face b"><div class="big" style="font-size:1.6rem">${esc(w.vi)}</div><div>${esc(w.def)}</div><i class="mut">${esc(w.ex)}</i><small class="mut">${w.syn?'≈ '+esc(w.syn):''} ${w.ant?'≠ '+esc(w.ant):''}</small></div></div></div>
- <div class="ctr"><button class="r" onclick="rt('again')">Chưa nhớ</button><button class="p" onclick="rt('hard')">Khó</button><button onclick="rt('good')">Đã nhớ</button></div>
- <div class="ctr" style="align-items:center"><small class="mut">Gắn nhãn:</small>${[['again','Chưa nhớ'],['hard','Khó'],['good','Đã nhớ'],['fav','Yêu thích']].map(([k,n])=>`<button type="button" class="${has(w,k)?'':'g'}" style="padding:5px 14px;font-size:.85em" onclick="tgC('${k}')">${n}</button>`).join('')}</div>
+ <div class="ctr">${[['again','r','Chưa nhớ'],['hard','p','Khó'],['good','','Đã nhớ']].map(([k,c,n])=>`<button class="${c}" style="${has(w,k)?'box-shadow:0 0 0 3px rgba(0,0,0,.18)':'opacity:.45'}" onclick="rt('${k}')">${n}</button>`).join('')}</div>
  <div class="player" role="group" aria-label="Điều khiển thẻ">
   <button type="button" title="Trộn thẻ" aria-label="Trộn" onclick="FC.l.sort(()=>Math.random()-.5);FC.i=0;FC.f=0;vFlash();toast('Đã trộn thẻ')">${IC.shuffle}</button>
   <button type="button" title="Thẻ trước (←)" aria-label="Trước" onclick="mv(-1)" ${FC.i?'':'disabled'}>${IC.prev}</button>
@@ -517,7 +516,7 @@ function vFlash(){if(!FC.l.length){const tp=FCT&&topics().includes(FCT)?FCT:'',a
 </div>`}
 function flip(){FC.f=!FC.f;$('#fc')?.classList.toggle('f',FC.f)}
 function mv(d){FC.i=Math.max(0,Math.min(FC.l.length,FC.i+d));FC.f=0;vFlash()}
-function rt(r){rate(FC.l[FC.i],r);mv(1)}
+function rt(r){const w=FC.l[FC.i];if(!w)return;if(has(w,r)){tagTgl(w,r);save()}else rate(w,r);vFlash()}
 document.addEventListener('keydown',e=>{if(page!=='flash'||!FC.l.length||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();flip()}if(e.key==='ArrowRight')mv(1);if(e.key==='ArrowLeft')mv(-1)});
 let QSRC=new Set(),QORD='rand';
 function qPool(){let a=S.words.filter(w=>!QSRC.size||QSRC.has(w.topic));a=[...a].sort(()=>Math.random()-.5);if(QORD==='weak')a.sort((x,y)=>x.box-y.box);else if(QORD==='new')a.sort((x,y)=>y.added-x.added);return a}
