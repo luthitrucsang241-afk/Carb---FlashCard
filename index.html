@@ -488,6 +488,8 @@ nav a{white-space:nowrap}
 #vmenu button{display:block;width:100%;text-align:left;background:transparent;color:var(--tx);border-radius:10px;padding:11px 14px;font-size:.95rem}
 #vmenu button:hover{background:color-mix(in srgb,var(--tx) 8%,transparent);transform:none}
 #vmenu button.dz{color:#c0392b}
+.sy-i{display:flex;flex-direction:column;gap:2px;margin:2px 0 8px;font-size:.85rem;overflow-wrap:anywhere}.sy-i span{color:var(--mut)}
+.sy-b{width:100%}
 </style></head><body>
 <div class="app"><nav id="nav"></nav><main><div class="top">
 <input id="q" placeholder="Tìm từ vựng…"><span class="date" id="dt"></span>
@@ -497,6 +499,7 @@ nav a{white-space:nowrap}
 <label>Ảnh đại diện</label><div class="seg"><button class="g" id="ab" type="button">Đổi ảnh</button><button class="g" id="ar" type="button">Xóa ảnh</button></div><input type="file" id="af" accept="image/*" hidden>
 <label>Ảnh banner</label><div class="seg"><button class="g" id="bb" type="button">Đổi banner</button><button class="g" id="bp" type="button">Chỉnh vị trí</button><button class="g" id="br" type="button">Mặc định</button></div><input type="file" id="bf2" accept="image/*" hidden>
 <label>Giao diện</label><div class="seg"><button type="button" data-th="">Hệ thống</button><button type="button" data-th="light">Sáng</button><button type="button" data-th="dark">Tối</button></div>
+<label>Đồng bộ giữa các máy</label><div id="syn"></div>
 </div></div></div><div id="v"></div></main></div>
 <div id="modal"><div id="mb"></div></div><div id="toast"></div>
 <script>
@@ -507,7 +510,7 @@ let S=load(),FC={l:[],i:0,f:0},Q=null,page='dashboard';
 function mk(a){return{id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),en:a[0]||'',ipa:a[1]||'',pos:a[2]||'',vi:a[3]||'',def:a[4]||'',ex:a[5]||'',topic:a[6]||'General',fav:0,added:Date.now(),box:-1,due:0,syn:'',ant:'',note:''}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.words)){d.tp=d.tp||{order:[],hide:[],color:{}};{const m={},need=new Set();d.words.forEach(w=>{m[w.id]=w;if(!Array.isArray(w.tags)){w.tags=[];need.add(w.id)}});if(Array.isArray(d.log))d.log.forEach(x=>{const w=m[x.id];if(w&&need.has(x.id))tagSet(w,x.r)})}return d}}catch(e){}
  return{tp:{order:[],hide:[],color:{}},words:SEED.map(mk),log:[],quizzes:[],sessions:0,set:{theme:'',accent:'#111418',fs:16,sound:1,per:10}}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Bộ nhớ trình duyệt đã đầy hoặc bị chặn – hãy xuất bản sao lưu.')}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(KEY+'_t',Date.now());if(window.cloudDirty)window.cloudDirty()}catch(e){toast('Bộ nhớ trình duyệt đã đầy hoặc bị chặn – hãy xuất bản sao lưu.')}}
 function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',2600)}
 function applySet(){const r=document.documentElement;if(S.set.theme)r.dataset.theme=S.set.theme;else delete r.dataset.theme;(S.set.accent==='#7c9a82'||S.set.accent==='#111418')?r.style.removeProperty('--ac'):r.style.setProperty('--ac',S.set.accent);r.style.setProperty('--fs',S.set.fs+'px');renderUser()}
 const dkey=t=>{const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()};
@@ -898,4 +901,73 @@ window.addEventListener('hashchange',route);applySet();save();route();
  addEventListener('focusout',()=>setTimeout(()=>{if(!typing(document.activeElement))document.body.classList.remove('kb')},120));
  addEventListener('hashchange',sync);sync();
 })();
-</script></body></html>
+</script>
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js';
+import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import{getFirestore,doc,getDoc,writeBatch}from'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
+const cfg={apiKey:"AIzaSyA0f8cKAWMiU_cWAkw4jw5NoMuq89wXzrQ",authDomain:"crab-25de7.firebaseapp.com",projectId:"crab-25de7",storageBucket:"crab-25de7.firebasestorage.app",messagingSenderId:"161769266581",appId:"1:161769266581:web:a297b01065324e71dfaa9c"};
+const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
+const TK=KEY+'_t',SK=KEY+'_s',CH=200000;
+let user=null,ready=false,busy=false,again=false,timer=0,st='';
+const g=k=>+localStorage.getItem(k)||0;
+const ref=n=>doc(db,'users',user.uid,'sync',n);
+const hm=()=>new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+function setSt(t){st=t;const e=document.getElementById('sst');if(e)e.textContent=t}
+function render(){const el=document.getElementById('syn');if(!el)return;
+ el.innerHTML=user?`<div class="sy-i"><b>${esc(user.email||'')}</b><span id="sst">${esc(st)}</span></div><div class="seg"><button class="g" type="button" data-a="s">Đồng bộ ngay</button><button class="g" type="button" data-a="o">Đăng xuất</button></div>`:`<button class="g sy-b" type="button" data-a="i">Đăng nhập Google</button>`}
+function chunks(s){const out=[];let i=0;while(i<s.length){let e=Math.min(i+CH,s.length);if(e<s.length){const c=s.charCodeAt(e-1);if(c>=0xD800&&c<=0xDBFF)e--}out.push(s.slice(i,e));i=e}return out.length?out:['']}
+const isFresh=()=>!localStorage.getItem(KEY)||(!(S.log||[]).length&&!S.sessions&&S.words.every(w=>SEED.some(x=>x[0]===w.en)));
+async function doPush(old){
+ const t=g(TK)||Date.now();
+ const c=JSON.parse(JSON.stringify(S));const u=c.user||{};const av=u.avatar||'',bn=u.banner||'';if(c.user){c.user.avatar='';c.user.banner=''}
+ const parts=chunks(JSON.stringify(c)),n=parts.length,big=x=>x.length>900000;
+ const b=writeBatch(db);
+ parts.forEach((v,i)=>b.set(ref('c'+i),{v}));
+ for(let i=n;i<old;i++)b.delete(ref('c'+i));
+ b.set(ref('avatar'),{v:big(av)?'':av});b.set(ref('banner'),{v:big(bn)?'':bn});
+ b.set(ref('meta'),{n,t,at:Date.now()});
+ await b.commit();
+ localStorage.setItem(TK,t);localStorage.setItem(SK,t);
+ if(big(av)||big(bn))toast('Ảnh quá lớn nên không đồng bộ ảnh đại diện/banner.');
+}
+async function doPull(){
+ const m=await getDoc(ref('meta'));const{n,t}=m.data();
+ const ds=await Promise.all([...Array(n).keys()].map(i=>getDoc(ref('c'+i))).concat([getDoc(ref('avatar')),getDoc(ref('banner'))]));
+ const d=JSON.parse(ds.slice(0,n).map(x=>x.data().v).join(''));
+ d.user=d.user||{name:''};
+ const av=ds[n],bn=ds[n+1];d.user.avatar=av.exists()?(av.data().v||''):'';d.user.banner=bn.exists()?(bn.data().v||''):'';
+ localStorage.setItem(KEY,JSON.stringify(d));localStorage.setItem(TK,t);localStorage.setItem(SK,t);
+ toast('Đã tải dữ liệu từ đám mây');setTimeout(()=>location.reload(),400);
+}
+async function sync(){
+ if(!user)return;if(busy){again=true;return}busy=true;let ok=true;
+ try{
+  setSt('Đang đồng bộ…');
+  const m=await getDoc(ref('meta')),lt=g(TK),ls=g(SK);
+  const rt=m.exists()?(m.data().t||0):0,old=m.exists()?(m.data().n||0):0;
+  let act='none';
+  if(!m.exists())act='push';
+  else if(rt===ls&&lt<=ls)act='none';
+  else if(!ls)act=isFresh()?'pull':(confirm('Tài khoản này đã có dữ liệu trên đám mây.\n\nOK = dùng dữ liệu đám mây (thay dữ liệu trên máy này)\nHủy = ghi đè đám mây bằng dữ liệu máy này')?'pull':'push');
+  else if(lt<=ls)act='pull';
+  else if(rt<=ls)act='push';
+  else act=rt>lt?'pull':'push';
+  if(act==='pull'){await doPull();return}
+  if(act==='push')await doPush(old);
+  setSt('Đã đồng bộ lúc '+hm());
+ }catch(e){ok=false;console.error(e);setSt('Lỗi đồng bộ');toast('Đồng bộ lỗi: '+(e.code||e.message))}
+ finally{busy=false;ready=true;
+  if(again){again=false;sync()}else if(ok&&g(TK)>g(SK)){clearTimeout(timer);timer=setTimeout(sync,2500)}}
+}
+window.cloudDirty=()=>{if(!user||!ready)return;clearTimeout(timer);timer=setTimeout(sync,2500);setSt('Chờ đồng bộ…')};
+document.addEventListener('click',async e=>{const b=e.target.closest('#syn [data-a]');if(!b)return;const a=b.dataset.a;
+ if(a==='i'){try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(x){toast(x.code==='auth/popup-closed-by-user'?'Đã hủy đăng nhập':'Đăng nhập lỗi: '+(x.code||x.message))}}
+ else if(a==='s')sync();
+ else if(a==='o'){await signOut(auth);localStorage.removeItem(SK);toast('Đã đăng xuất')}});
+onAuthStateChanged(auth,u=>{user=u;ready=false;st=u?'Đang kết nối…':'';render();if(u)sync()});
+const again2=()=>{if(user&&ready&&document.visibilityState==='visible')sync()};
+document.addEventListener('visibilitychange',again2);addEventListener('online',again2);
+render();
+</script>
+</body></html>
