@@ -310,9 +310,9 @@ nav{height:calc(100vh / .9)!important}
 .qo{display:flex;flex-direction:column;gap:6px;border:2px solid var(--bd);border-radius:16px;padding:16px;cursor:pointer;background:var(--bg);transition:transform .15s,border-color .15s,box-shadow .15s}
 .qo:hover{transform:translateY(-2px)}.qo.on{border-color:var(--ac);box-shadow:0 4px 14px rgba(0,0,0,.1)}
 .qo .ic{font:700 1.4rem Georgia,serif;color:var(--ac)}.qo small{color:var(--mut);line-height:1.35}
-.qcnt{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:26px}
-.qc{padding:9px 20px;border-radius:999px;border:2px solid var(--bd);background:var(--bg);cursor:pointer;font-weight:600;transition:border-color .15s}
-.qc.on{border-color:var(--ac);color:var(--ac)}
+.qnum{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:26px}
+.qnbtn{padding:9px 20px;border-radius:999px;border:2px solid var(--bd);background:var(--bg);cursor:pointer;font-weight:600;transition:border-color .15s}
+.qnbtn.on{border-color:var(--ac);color:var(--ac)}
 .qgo{padding:12px 28px;font-size:1rem;font-weight:600}
 .qstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:12px}
 .qs{text-align:center;padding:14px 6px;border-radius:14px;background:var(--bg)}.qs b{display:block;font-size:1.5rem}.qs small{color:var(--mut)}
@@ -341,7 +341,7 @@ nav a{white-space:nowrap}
 .qwrap>.card>.row:last-child{margin-top:0!important}
 .qwrap>.card .qtypes{flex:1;grid-auto-rows:1fr;margin-bottom:20px}
 .qwrap>.card .qo{justify-content:center}
-.qwrap>.card .qcnt{margin-bottom:22px}
+.qwrap>.card .qnum{margin-bottom:22px}
 .ldo{display:grid;gap:16px;margin-bottom:16px}
 .ldo .card{margin-bottom:0}
 .ldo .lp{max-width:none;margin-bottom:14px}
@@ -351,7 +351,7 @@ nav a{white-space:nowrap}
 #lh{max-height:260px;overflow-y:auto;padding-right:6px;scrollbar-width:thin;scrollbar-color:var(--bd) transparent}
 .qwrap>.card>*{flex-shrink:0}
 .qwrap>.card .qtypes{flex:1 0 auto}
-.qwrap>.card .qcnt{min-height:44px}
+.qwrap>.card .qnum{min-height:44px}
 </style></head><body>
 <div class="app"><nav id="nav"></nav><main><div class="top">
 <input id="q" placeholder="Tìm từ vựng…"><span class="date" id="dt"></span>
@@ -499,9 +499,9 @@ function flip(){FC.f=!FC.f;$('#fc')?.classList.toggle('f',FC.f)}
 function mv(d){FC.i=Math.max(0,Math.min(FC.l.length,FC.i+d));FC.f=0;vFlash()}
 function rt(r){rate(FC.l[FC.i],r);mv(1)}
 document.addEventListener('keydown',e=>{if(page!=='flash'||!FC.l.length||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();flip()}if(e.key==='ArrowRight')mv(1);if(e.key==='ArrowLeft')mv(-1)});
-function qPick(id,v,el){$('#'+id).value=v;el.parentNode.querySelectorAll('.qo,.qc').forEach(x=>x.classList.toggle('on',x===el))}
+function qPick(id,v,el){$('#'+id).value=v;el.parentNode.querySelectorAll('.qo,.qnbtn').forEach(x=>x.classList.toggle('on',x===el))}
 function vQuiz(){if(!Q){const n=S.words.length,qs=S.quizzes,pc=q=>Math.round(q.s/q.n*100),best=qs.length?Math.max(...qs.map(pc)):0,avg=qs.length?Math.round(qs.reduce((a,q)=>a+pc(q),0)/qs.length):0,TN={mc:'Trắc nghiệm',type:'Tự nhập',blank:'Điền từ'},T=[['mc','A·B','Trắc nghiệm','Chọn 1 trong 4 đáp án đúng'],['type','Aa','Tự nhập đáp án','Tự gõ đáp án, không có gợi ý'],['blank','___','Điền từ vào câu','Điền từ còn thiếu vào câu ví dụ']];
-$('#v').innerHTML=`<h2>Quiz</h2><div class="qwrap"><div class="card"><input type="hidden" id="qt" value="mc"><input type="hidden" id="qn" value="10"><p class="qlbl">Dạng bài</p><div class="qtypes">${T.map((t,i)=>`<div class="qo${i?'':' on'}" onclick="qPick('qt','${t[0]}',this)"><span class="ic">${t[1]}</span><b>${t[2]}</b><small>${t[3]}</small></div>`).join('')}</div><p class="qlbl">Số câu</p><div class="qcnt">${[5,10,20].map(c=>`<div class="qc${c==10?' on':''}" onclick="qPick('qn','${c}',this)">${c} câu</div>`).join('')}</div><div class="row" style="margin:0"><button class="qgo" onclick="startQ()">Bắt đầu làm bài</button><span class="mut">${n<4?'Cần tối thiểu 4 từ để bắt đầu (hiện có '+n+').':'Chọn ngẫu nhiên từ '+n+' từ của bạn.'}</span></div></div><div><div class="card"><p class="qlbl">Tổng quan</p><div class="qstats"><div class="qs"><b>${n}</b><small>Từ vựng</small></div><div class="qs"><b>${qs.length}</b><small>Lần làm</small></div><div class="qs"><b>${qs.length?best+'%':'–'}</b><small>Cao nhất</small></div></div>${qs.length?`<p class="mut" style="margin:0">Điểm trung bình: <b>${avg}%</b></p>`:'<p class="mut" style="margin:0">Chưa có bài quiz nào. Làm thử bài đầu tiên nhé!</p>'}</div><div class="card qh"><p class="qlbl">Gần đây</p><div class="qlist">${[...qs].map((q,i)=>({q,i})).reverse().slice(0,30).map(({q,i})=>`<div class="qr" ${q.d&&q.d.length?`onclick="showQ(${i})"`:'style="cursor:default;opacity:.75"'}><span class="m">${new Date(q.t).toLocaleDateString('vi-VN')}</span><span class="sc">${q.s}/${q.n}</span><span class="tag">${TN[q.type]||q.type}</span></div>`).join('')||'<p class="mut" style="margin:0">Lịch sử sẽ hiện ở đây.</p>'}</div></div></div></div>`;return}
+$('#v').innerHTML=`<h2>Quiz</h2><div class="qwrap"><div class="card"><input type="hidden" id="qt" value="mc"><input type="hidden" id="qn" value="10"><p class="qlbl">Dạng bài</p><div class="qtypes">${T.map((t,i)=>`<div class="qo${i?'':' on'}" onclick="qPick('qt','${t[0]}',this)"><span class="ic">${t[1]}</span><b>${t[2]}</b><small>${t[3]}</small></div>`).join('')}</div><p class="qlbl">Số câu</p><div class="qnum">${[5,10,20].map(c=>`<div class="qnbtn${c==10?' on':''}" onclick="qPick('qn','${c}',this)">${c} câu</div>`).join('')}</div><div class="row" style="margin:0"><button class="qgo" onclick="startQ()">Bắt đầu làm bài</button><span class="mut">${n<4?'Cần tối thiểu 4 từ để bắt đầu (hiện có '+n+').':'Chọn ngẫu nhiên từ '+n+' từ của bạn.'}</span></div></div><div><div class="card"><p class="qlbl">Tổng quan</p><div class="qstats"><div class="qs"><b>${n}</b><small>Từ vựng</small></div><div class="qs"><b>${qs.length}</b><small>Lần làm</small></div><div class="qs"><b>${qs.length?best+'%':'–'}</b><small>Cao nhất</small></div></div>${qs.length?`<p class="mut" style="margin:0">Điểm trung bình: <b>${avg}%</b></p>`:'<p class="mut" style="margin:0">Chưa có bài quiz nào. Làm thử bài đầu tiên nhé!</p>'}</div><div class="card qh"><p class="qlbl">Gần đây</p><div class="qlist">${[...qs].map((q,i)=>({q,i})).reverse().slice(0,30).map(({q,i})=>`<div class="qr" ${q.d&&q.d.length?`onclick="showQ(${i})"`:'style="cursor:default;opacity:.75"'}><span class="m">${new Date(q.t).toLocaleDateString('vi-VN')}</span><span class="sc">${q.s}/${q.n}</span><span class="tag">${TN[q.type]||q.type}</span></div>`).join('')||'<p class="mut" style="margin:0">Lịch sử sẽ hiện ở đây.</p>'}</div></div></div></div>`;return}
  if(Q.i>=Q.l.length){const p=Math.round(Q.s/Q.l.length*100);$('#v').innerHTML=`<div class="card"><h2>Kết quả: ${Q.s}/${Q.l.length} (${p}%)</h2><p>Đúng ${Q.s} · Sai ${Q.w.length}</p>${Q.w.map(w=>`<div class="w"><b>${esc(w.en)}</b> – ${esc(w.vi)}</div>`).join('')}<div class="row"><button onclick="startQ(Q.w)" ${Q.w.length?'':'disabled'}>Làm lại câu sai</button><button class="g" onclick="Q=null;vQuiz()">Xong</button></div></div>`;return}
  const w=Q.l[Q.i];let b;if(Q.t==='mc'){const o=[w,...S.words.filter(x=>x.id!==w.id).sort(()=>Math.random()-.5).slice(0,3)].sort(()=>Math.random()-.5);b=o.map(x=>`<button class="opt" onclick="ans(this,${x.id===w.id})">${esc(x.vi)}</button>`).join('')}
  else b=`<input id="ta" placeholder="Nhập từ tiếng Anh" onkeydown="if(event.key==='Enter')tans()"><div class="row" style="margin-top:8px"><button onclick="tans()">Trả lời</button></div>`;
