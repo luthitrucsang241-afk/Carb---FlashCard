@@ -904,11 +904,11 @@ window.addEventListener('hashchange',route);applySet();save();route();
 })();
 </script>
 <script type="module">
-let initializeApp,getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged,getFirestore,doc,getDoc,writeBatch;
+let initializeApp,getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,signOut,onAuthStateChanged,getFirestore,doc,getDoc,writeBatch;
 try{
  const V='https://www.gstatic.com/firebasejs/10.14.1/';
  ({initializeApp}=await import(V+'firebase-app.js'));
- ({getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}=await import(V+'firebase-auth.js'));
+ ({getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,signOut,onAuthStateChanged}=await import(V+'firebase-auth.js'));
  ({getFirestore,doc,getDoc,writeBatch}=await import(V+'firebase-firestore.js'));
 }catch(e){
  console.error(e);
@@ -919,13 +919,15 @@ try{
 const cfg={apiKey:"AIzaSyA0f8cKAWMiU_cWAkw4jw5NoMuq89wXzrQ",authDomain:"crab-25de7.firebaseapp.com",projectId:"crab-25de7",storageBucket:"crab-25de7.firebasestorage.app",messagingSenderId:"161769266581",appId:"1:161769266581:web:a297b01065324e71dfaa9c"};
 const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
 const TK=KEY+'_t',SK=KEY+'_s',CH=200000;
-let user=null,ready=false,busy=false,again=false,timer=0,st='';
+let user=null,ready=false,busy=false,again=false,timer=0,st='',err='';
+const inApp=/FBAN|FBAV|FB_IAB|Zalo|Instagram|Messenger|Line\/|MicroMessenger/i.test(navigator.userAgent);
 const g=k=>+localStorage.getItem(k)||0;
 const ref=n=>doc(db,'users',user.uid,'sync',n);
 const hm=()=>new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+function showErr(x){const c=x.code||'';err=c==='auth/popup-closed-by-user'?'Cửa sổ đăng nhập đã đóng. Nếu bạn không tự đóng, trình duyệt đang chặn – hãy thử lại hoặc mở bằng Safari/Chrome.':c==='auth/unauthorized-domain'?'Domain này chưa được thêm vào Authorized domains của Firebase ('+location.hostname+').':'Lỗi đăng nhập: '+(c||x.message||x);console.error(x);render();toast('Đăng nhập chưa được')}
 function setSt(t){st=t;const e=document.getElementById('sst');if(e)e.textContent=t}
 function render(){const el=document.getElementById('syn');if(!el)return;
- el.innerHTML=user?`<div class="sy-i"><b>${esc(user.email||'')}</b><span id="sst">${esc(st)}</span></div><div class="seg"><button class="g" type="button" data-a="s">Đồng bộ ngay</button><button class="g" type="button" data-a="o">Đăng xuất</button></div>`:`<button class="g sy-b" type="button" data-a="i">Đăng nhập Google</button>`}
+ el.innerHTML=user?`<div class="sy-i"><b>${esc(user.email||'')}</b><span id="sst">${esc(st)}</span></div><div class="seg"><button class="g" type="button" data-a="s">Đồng bộ ngay</button><button class="g" type="button" data-a="o">Đăng xuất</button></div>`:`<button class="g sy-b" type="button" data-a="i">Đăng nhập Google</button>${inApp?'<div class="mut" style="font-size:.8rem;margin-top:6px">Bạn đang mở trong trình duyệt của app khác (Zalo/Facebook…). Google chặn đăng nhập ở đây, hãy mở link bằng Safari hoặc Chrome.</div>':''}${err?`<div style="font-size:.8rem;margin-top:6px;color:#c0392b;overflow-wrap:anywhere">${esc(err)}</div>`:''}`}
 function chunks(s){const out=[];let i=0;while(i<s.length){let e=Math.min(i+CH,s.length);if(e<s.length){const c=s.charCodeAt(e-1);if(c>=0xD800&&c<=0xDBFF)e--}out.push(s.slice(i,e));i=e}return out.length?out:['']}
 const isFresh=()=>!localStorage.getItem(KEY)||(!(S.log||[]).length&&!S.sessions&&S.words.every(w=>SEED.some(x=>x[0]===w.en)));
 async function doPush(old){
@@ -972,9 +974,14 @@ async function sync(){
 }
 window.cloudDirty=()=>{if(!user||!ready)return;clearTimeout(timer);timer=setTimeout(sync,2500);setSt('Chờ đồng bộ…')};
 document.addEventListener('click',async e=>{const b=e.target.closest('#syn [data-a]');if(!b)return;const a=b.dataset.a;
- if(a==='i'){try{await signInWithPopup(auth,new GoogleAuthProvider())}catch(x){toast(x.code==='auth/popup-closed-by-user'?'Đã hủy đăng nhập':'Đăng nhập lỗi: '+(x.code||x.message))}}
+ if(a==='i'){err='';render();const pv=new GoogleAuthProvider();
+  try{await signInWithPopup(auth,pv)}catch(x){
+   const c=x.code||'';
+   if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment','auth/web-storage-unsupported','auth/cancelled-popup-request'].includes(c)){try{await signInWithRedirect(auth,pv);return}catch(y){x=y}}
+   showErr(x)}}
  else if(a==='s')sync();
  else if(a==='o'){await signOut(auth);localStorage.removeItem(SK);toast('Đã đăng xuất')}});
+getRedirectResult(auth).catch(showErr);
 onAuthStateChanged(auth,u=>{user=u;ready=false;st=u?'Đang kết nối…':'';render();if(u)sync()});
 const again2=()=>{if(user&&ready&&document.visibilityState==='visible')sync()};
 document.addEventListener('visibilitychange',again2);addEventListener('online',again2);
