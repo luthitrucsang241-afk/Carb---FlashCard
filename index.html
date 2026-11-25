@@ -975,6 +975,7 @@ async function sync(){
 window.cloudDirty=()=>{if(!user||!ready)return;clearTimeout(timer);timer=setTimeout(sync,2500);setSt('Chờ đồng bộ…')};
 document.addEventListener('click',async e=>{const b=e.target.closest('#syn [data-a]');if(!b)return;const a=b.dataset.a;
  if(a==='i'){err='';render();const pv=new GoogleAuthProvider();
+  if(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)){try{await signInWithRedirect(auth,pv)}catch(x){showErr(x)}return}
   try{await signInWithPopup(auth,pv)}catch(x){
    const c=x.code||'';
    if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment','auth/web-storage-unsupported','auth/cancelled-popup-request'].includes(c)){try{await signInWithRedirect(auth,pv);return}catch(y){x=y}}
