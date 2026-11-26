@@ -541,6 +541,38 @@ nav a{white-space:nowrap}
  .fper .fp{display:none}
 }
 @media(max-width:350px){.vtool .vact{grid-template-columns:1fr 1fr}}
+
+/* ===== Điện thoại v4: chỉnh bố cục Flashcard + Quiz ===== */
+.fcq{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:16px}
+.fcqb{display:flex;gap:8px;flex-wrap:wrap}
+.fcqb button{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.cn{font-style:normal;font-size:.8em;font-weight:700;min-width:22px;padding:1px 7px;border-radius:999px;background:color-mix(in srgb,var(--tx) 10%,transparent);text-align:center}
+@media(max-width:800px){
+ /* Flashcard: nhãn riêng 1 dòng, 4 mục xếp lưới 2x2 đều nhau */
+ .fcopt{padding:14px;gap:12px}
+ .fct button{width:100%}
+ .fci{min-height:150px}
+ .fcq{display:block;margin-top:18px;padding-top:16px;border-top:1px solid var(--bd)}
+ .fcq>b{display:block;margin-bottom:10px;font-size:.95rem}
+ .fcqb{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .fcqb button{width:100%;min-height:44px;padding:0 12px;justify-content:space-between;white-space:nowrap}
+ .ftip{display:none}
+
+ /* Quiz: form 2 cột, nhãn canh trái, nút bắt đầu rộng hết cỡ */
+ .qsel3{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 10px;margin-bottom:20px}
+ .qsel3>div{min-width:0}
+ .qsel3>div:nth-child(1){grid-column:1/-1;order:1}
+ .qsel3>div:nth-child(2){order:2}
+ .qsel3>div:nth-child(4){order:3}
+ .qsel3>div:nth-child(3){grid-column:1/-1;order:4}
+ .qsel3 .qlbl{text-align:left;margin:0 0 6px 4px;font-size:.7rem}
+ .qsel3 .csb{justify-content:flex-start;padding:11px 34px 11px 16px;font-size:.92rem}
+ .qsel3 .csb span{text-align:left}
+ .qsel3 .csb svg{right:14px}
+ .qsel3 .qnin{text-align:left;padding:11px 16px;font-size:.92rem;min-height:0;height:auto}
+ .qwrap>.card .row:last-child{width:100%;align-items:stretch!important;text-align:center}
+ .qgo{width:100%;padding:14px 20px;font-size:1.02rem}
+}
 </style></head><body>
 <div class="app"><nav id="nav"></nav><main><div class="top">
 <input id="q" placeholder="Tìm từ vựng…"><span class="date" id="dt"></span>
@@ -741,8 +773,8 @@ function vFlash(){if(!FC.l.length){const tp=FCT&&topics().includes(FCT)?FCT:'',a
 <div class="row fper" style="margin-top:12px"><label style="margin:0">Số thẻ mỗi phiên</label><input id="fn" type="number" min="1" value="${per}" style="width:90px" onchange="setPer(this.value)"><button class="g fp" onclick="setPer(10)">10</button><button class="g fp" onclick="setPer(20)">20</button><button class="g fp" onclick="setPer(50)">50</button><button class="g" onclick="setPer(9999)">Tất cả</button></div>
 <div class="fcgrid"><div class="fcopt"><div class="fct"><b>Thẻ đến hạn / mới</b><div class="big" style="font-size:2rem;margin:6px 0">${due.length}</div><small class="mut">Phiên này học ${Math.min(per,due.length)} thẻ</small><div style="margin-top:12px"><button onclick="startFC($('#ft').value,'due')" ${due.length?'':'disabled'}>Bắt đầu học</button></div></div>${fcPic(1)}</div>
 <div class="fcopt"><div class="fct"><b>Tất cả thẻ</b><div class="big" style="font-size:2rem;margin:6px 0">${all.length}</div><small class="mut">Phiên này học ${Math.min(per,all.length)} thẻ</small><div style="margin-top:12px"><button class="g" onclick="startFC($('#ft').value,'all')" ${all.length?'':'disabled'}>Ôn tất cả</button></div></div>${fcPic(2)}</div></div>
-<div class="row" style="margin-top:16px;flex-wrap:wrap"><b>Học theo mục:</b>${[['again','Chưa nhớ'],['hard','Khó'],['good','Đã nhớ'],['fav','Yêu thích']].map(([k,n])=>`<button class="g" onclick="startFC($('#ft').value,'${k}')">${n} (${all.filter(w=>has(w,k)).length})</button>`).join('')}</div>
-<p class="mut" style="margin-top:14px">Mẹo: Space để lật thẻ, ← → để chuyển thẻ.</p></div>`;return}
+<div class="fcq"><b>Học theo mục</b><div class="fcqb">${[['again','Chưa nhớ'],['hard','Khó'],['good','Đã nhớ'],['fav','Yêu thích']].map(([k,n])=>`<button class="g" onclick="startFC($('#ft').value,'${k}')"><span>${n}</span><em class="cn">${all.filter(w=>has(w,k)).length}</em></button>`).join('')}</div></div>
+<p class="mut ftip" style="margin-top:14px">Mẹo: Space để lật thẻ, ← → để chuyển thẻ.</p></div>`;return}
  const w=FC.l[FC.i];if(!w){$('#v').innerHTML=`<div class="card"><h2> Hoàn thành phiên học!</h2><button onclick="FC.l=[];vFlash()">Quay lại</button></div>`;return}
  $('#v').innerHTML=`<div class="row"><button class="g" onclick="FC.l=[];vFlash()">‹ Quay lại</button></div><h2>Flashcards <small class="mut">${FC.i+1}/${FC.l.length}</small></h2><div class="scene" onclick="flip()"><div class="fc ${FC.f?'f':''}" id="fc"><div class="face"><div class="big">${esc(w.en)}</div><div class="mut">${esc(w.ipa)}</div><button class="g" onclick="event.stopPropagation();speak(FC.l[FC.i].en)"> Nghe</button></div><div class="face b"><div class="big" style="font-size:1.6rem">${esc(w.vi)}</div><div>${esc(w.def)}</div><i class="mut">${esc(w.ex)}</i><small class="mut">${w.syn?'≈ '+esc(w.syn):''} ${w.ant?'≠ '+esc(w.ant):''}</small></div></div></div>
  <div class="ctr">${[['again','r','Chưa nhớ'],['hard','p','Khó'],['good','','Đã nhớ']].map(([k,c,n])=>`<button class="${c}" style="${has(w,k)?'box-shadow:0 0 0 3px rgba(0,0,0,.18)':'opacity:.45'}" onclick="rt('${k}')">${n}</button>`).join('')}</div>
