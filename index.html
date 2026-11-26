@@ -567,7 +567,31 @@ function applySet(){const r=document.documentElement;if(S.set.theme)r.dataset.th
 const dkey=t=>{const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()};
 const due=()=>S.words.filter(w=>w.box>=0&&w.due<=Date.now());
 function streak(){const ds=new Set(S.log.map(l=>dkey(l.t)));let n=0,t=Date.now();if(!ds.has(dkey(t)))t-=DAY;while(ds.has(dkey(t))){n++;t-=DAY}return n}
-function speak(t){if(!S.set.sound)return toast('Âm thanh đang tắt trong Cài đặt.');if(!('speechSynthesis' in window))return toast('Trình duyệt không hỗ trợ phát âm.');speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='en-US';speechSynthesis.speak(u)}
+let ENV=null;
+function pickEnVoice(){
+  const vs=(window.speechSynthesis&&speechSynthesis.getVoices())||[];
+  const en=vs.filter(v=>/^en([-_]|$)/i.test(v.lang||''));
+  if(!en.length)return null;
+  const rank=v=>{const l=(v.lang||'').replace('_','-').toLowerCase();
+    return (l==='en-us'?0:l==='en-gb'?1:2)+(/google|samantha|siri|enhanced|premium|natural/i.test(v.name)?-0.5:0)};
+  en.sort((a,b)=>rank(a)-rank(b));
+  return en[0];
+}
+if('speechSynthesis' in window){
+  ENV=pickEnVoice();
+  speechSynthesis.addEventListener&&speechSynthesis.addEventListener('voiceschanged',()=>{ENV=pickEnVoice()});
+}
+function speak(t){
+  if(!S.set.sound)return toast('Âm thanh đang tắt trong Cài đặt.');
+  if(!('speechSynthesis' in window))return toast('Trình duyệt không hỗ trợ phát âm.');
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(t);
+  const v=ENV||pickEnVoice();
+  if(v){u.voice=v;u.lang=(v.lang||'en-US').replace('_','-')}else{u.lang='en-US'}
+  u.rate=0.9;
+  const iOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+  if(iOS){speechSynthesis.speak(u)}else{setTimeout(()=>speechSynthesis.speak(u),60)}
+}
 const has=(w,k)=>k==='fav'?!!w.fav:(w.tags||[]).includes(k);
 function tagSet(w,r){const t=new Set(w.tags||[]);t.add(r);if(r==='again')t.delete('good');if(r==='good')t.delete('again');w.tags=[...t]}
 function tagTgl(w,k){if(k==='fav'){w.fav=w.fav?0:1;return}const t=new Set(w.tags||[]);if(t.has(k))t.delete(k);else{t.add(k);if(k==='again')t.delete('good');if(k==='good')t.delete('again')}w.tags=[...t]}
