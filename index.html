@@ -1025,47 +1025,111 @@ function render(){const el=document.getElementById('syn');if(!el)return;
  el.innerHTML=user?`<div class="sy-i"><b>${esc(user.email||'')}</b><span id="sst">${esc(st)}</span></div><div class="seg"><button class="g" type="button" data-a="s">Đồng bộ ngay</button><button class="g" type="button" data-a="o">Đăng xuất</button></div>`:`<button class="g sy-b" type="button" data-a="i">Đăng nhập Google</button>${inApp?'<div class="mut" style="font-size:.8rem;margin-top:6px">Bạn đang mở trong trình duyệt của app khác (Zalo/Facebook…). Google chặn đăng nhập ở đây, hãy mở link bằng Safari hoặc Chrome.</div>':''}${err?`<div style="font-size:.8rem;margin-top:6px;color:#c0392b;overflow-wrap:anywhere">${esc(err)}</div>`:''}`}
 function chunks(s){const out=[];let i=0;while(i<s.length){let e=Math.min(i+CH,s.length);if(e<s.length){const c=s.charCodeAt(e-1);if(c>=0xD800&&c<=0xDBFF)e--}out.push(s.slice(i,e));i=e}return out.length?out:['']}
 const isFresh=()=>!localStorage.getItem(KEY)||(!(S.log||[]).length&&!S.sessions&&S.words.every(w=>SEED.some(x=>x[0]===w.en)));
-async function doPush(old){
- const t=g(TK)||Date.now();
- const c=JSON.parse(JSON.stringify(S));const u=c.user||{};const av=u.avatar||'',bn=u.banner||'';if(c.user){c.user.avatar='';c.user.banner=''}
- const parts=chunks(JSON.stringify(c)),n=parts.length,big=x=>x.length>900000;
- const b=writeBatch(db);
- parts.forEach((v,i)=>b.set(ref('c'+i),{v}));
- for(let i=n;i<old;i++)b.delete(ref('c'+i));
- b.set(ref('avatar'),{v:big(av)?'':av});b.set(ref('banner'),{v:big(bn)?'':bn});
- b.set(ref('meta'),{n,t,at:Date.now()});
- await b.commit();
- localStorage.setItem(TK,t);localStorage.setItem(SK,t);
- if(big(av)||big(bn))toast('Ảnh quá lớn nên không đồng bộ ảnh đại diện/banner.');
+// Hợp nhất dữ liệu theo ID thay vì quyết định ghi đè dựa trên đồng hồ của thiết bị.
+function mergeArray(remote,local,keyFn){
+ const out=[],seen=new Map();
+ for(const item of [...(Array.isArray(remote)?remote:[]),...(Array.isArray(local)?local:[])]){
+  const key=keyFn(item);
+  if(seen.has(key)){const i=seen.get(key);out[i]={...out[i],...item};}
+  else{seen.set(key,out.length);out.push(item)}
+ }
+ return out;
 }
-async function doPull(){
- const m=await getDoc(ref('meta'));const{n,t}=m.data();
- const ds=await Promise.all([...Array(n).keys()].map(i=>getDoc(ref('c'+i))).concat([getDoc(ref('avatar')),getDoc(ref('banner'))]));
- const d=JSON.parse(ds.slice(0,n).map(x=>x.data().v).join(''));
- d.user=d.user||{name:''};
- const av=ds[n],bn=ds[n+1];d.user.avatar=av.exists()?(av.data().v||''):'';d.user.banner=bn.exists()?(bn.data().v||''):'';
- localStorage.setItem(KEY,JSON.stringify(d));localStorage.setItem(TK,t);localStorage.setItem(SK,t);
- toast('Đã tải dữ liệu từ đám mây');setTimeout(()=>location.reload(),400);
+function mergeData(remote,local){
+ const r=remote&&typeof remote==='object'?remote:{};
+ const l=local&&typeof local==='object'?local:{};
+ const out={...r,...l};
+ // Giữ lại từ trên mọi thiết bị; cùng ID thì ưu tiên bản đang có trên máy hiện tại.
+ out.words=mergeArray(r.words,l.words,x=>String((x&&x.en||'').trim().toLowerCase()||x&&x.id||JSON.stringify(x)));
+ // Nếu cùng từ được khởi tạo với ID khác nhau trên hai máy, giữ ID cloud để lịch sử ôn tập còn liên kết.
+ const remoteWordIds=new Map((r.words||[]).map(w=>[(w.en||'').trim().toLowerCase(),w.id]));
+ out.words.forEach(w=>{const oldId=remoteWordIds.get((w.en||'').trim().toLowerCase());if(oldId)w.id=oldId});
+ // Lịch sử ôn tập/quiz là dữ liệu phát sinh: hợp nhất, không thay thế cả mảng.
+ out.log=mergeArray(r.log,l.log,x=>`${x&&x.t}|${x&&x.id}|${x&&x.r}`);
+ out.quizzes=mergeArray(r.quizzes,l.quizzes,x=>`${x&&x.t}|${x&&x.type}|${x&&x.s}|${x&&x.n}`);
+ // Các mảng khác (nếu phiên bản app có thêm) cũng được hợp nhất không mất phần tử.
+ for(const k of new Set([...Object.keys(r),...Object.keys(l)])){
+  if(['words','log','quizzes','user'].includes(k))continue;
+  if(Array.isArray(r[k])||Array.isArray(l[k]))out[k]=mergeArray(r[k],l[k],x=>x&&x.id!=null?String(x.id):JSON.stringify(x));
+  else if(r[k]&&l[k]&&typeof r[k]==='object'&&typeof l[k]==='object')out[k]={...r[k],...l[k]};
+ }
+ out.user={...(r.user||{}),...(l.user||{})};
+ return out;
+}
+function cloudChunks(s){const out=[];let i=0;while(i<s.length){let e=Math.min(i+CH,s.length);if(e<s.length&&s.charCodeAt(e-1)>=0xD800&&s.charCodeAt(e-1)<=0xDBFF)e--;out.push(s.slice(i,e));i=e}return out.length?out:['']}
+async function syncSafely(){
+ // Sao lưu bản local trước mọi thao tác cloud để có đường lui khi dữ liệu lỗi.
+ const localRaw=localStorage.getItem(KEY)||JSON.stringify(S);
+ try{localStorage.setItem(KEY+'_sync_backup',localRaw)}catch(e){console.warn('Không đủ dung lượng tạo bản sao lưu phụ; vẫn giữ nguyên dữ liệu local và tiếp tục hợp nhất an toàn.',e)}
+ const localData=JSON.parse(localRaw);
+ let previous={};try{previous=JSON.parse(localStorage.getItem(KEY+'_synced_snapshot')||'{}')}catch(e){}
+ const hadSnapshot=Array.isArray(previous.words);
+ const metaRef=ref('meta');
+ await db.runTransaction(async tx=>{
+  const metaSnap=await tx.get(metaRef);
+  const meta=metaSnap.exists?metaSnap.data():{};
+  const oldN=Number(meta.n)||0;
+  const cloudRefs=[...Array(oldN).keys()].map(i=>ref('c'+i));
+  const cloudSnaps=[];
+  for(let i=0;i<cloudRefs.length;i+=10){
+   const group=cloudRefs.slice(i,i+10);
+   const got=await Promise.all(group.map(r=>tx.get(r)));
+   cloudSnaps.push(...got);
+  }
+  const avRef=ref('avatar'),bnRef=ref('banner');
+  const avSnap=await tx.get(avRef),bnSnap=await tx.get(bnRef);
+  let remote={};
+  if(metaSnap.exists&&oldN){
+   const raw=cloudSnaps.map(x=>x.exists?x.data().v||'':'').join('');
+   if(!raw)throw new Error('Dữ liệu đám mây trống bất thường; đã dừng để tránh ghi đè.');
+   remote=JSON.parse(raw);
+   remote.user=remote.user||{};
+   remote.user.avatar=avSnap.exists?avSnap.data().v||'':'';
+   remote.user.banner=bnSnap.exists?bnSnap.data().v||'':'';
+  }
+  // Nếu máy mới chỉ có bộ từ mẫu, không để dữ liệu mặc định ghi đè hồ sơ/cài đặt trên cloud.
+  const freshLocal=!localStorage.getItem(KEY);
+  const localForMerge=freshLocal&&metaSnap.exists?{...localData,words:[],log:[],quizzes:[],user:{},set:{},tp:{}}:localData;
+  const merged=mergeData(remote,localForMerge);
+  // Từ lần đồng bộ thứ hai trở đi có thể nhận diện mục đã bị xóa trên máy này.
+  if(hadSnapshot&&!freshLocal){
+   const currentIds=new Set((localData.words||[]).map(w=>String((w.en||'').trim().toLowerCase()||w.id)));
+   const deleted=new Set((previous.words||[]).filter(w=>!currentIds.has(String((w.en||'').trim().toLowerCase()||w.id))).map(w=>String((w.en||'').trim().toLowerCase()||w.id)));
+   if(deleted.size)merged.words=merged.words.filter(w=>!deleted.has(String((w.en||'').trim().toLowerCase()||w.id)));
+  }
+  const u=merged.user||{};const avatar=u.avatar||'',banner=u.banner||'';
+  const payload=JSON.parse(JSON.stringify(merged));
+  if(payload.user){payload.user.avatar='';payload.user.banner=''}
+  const parts=cloudChunks(JSON.stringify(payload));
+  // Firestore giới hạn 500 thao tác/transaction; dừng an toàn nếu vượt giới hạn.
+  if(parts.length+Math.max(0,oldN-parts.length)+3>490)throw new Error('Dữ liệu quá lớn để đồng bộ an toàn trong một giao dịch. Hãy xuất bản sao lưu và liên hệ để nâng cấp cơ chế lưu trữ.');
+  parts.forEach((v,i)=>tx.set(ref('c'+i),{v}));
+  for(let i=parts.length;i<oldN;i++)tx.delete(ref('c'+i));
+  tx.set(avRef,{v:avatar.length>900000?'':avatar});
+  tx.set(bnRef,{v:banner.length>900000?'':banner});
+  const rev=(Number(meta.rev)||0)+1;
+  tx.set(metaRef,{n:parts.length,rev,at:Date.now(),t:Date.now()});
+  // Lưu kết quả hợp nhất sau khi transaction commit thành công.
+  window.__lexoraMerged=merged;
+ });
+ if(!window.__lexoraMerged)throw new Error('Không nhận được kết quả đồng bộ.');
+ S=window.__lexoraMerged;delete window.__lexoraMerged;
+ localStorage.setItem(KEY,JSON.stringify(S));
+ localStorage.setItem(KEY+'_synced_snapshot',JSON.stringify({words:(S.words||[]).map(w=>({id:w.id,en:w.en}))}));
+ const stamp=Date.now();localStorage.setItem(TK,String(stamp));localStorage.setItem(SK,String(stamp));
 }
 async function sync(){
- if(!user)return;if(busy){again=true;return}busy=true;let ok=true;
+ if(!user)return;if(busy){again=true;return}busy=true;let ok=false;
  try{
-  setSt('Đang đồng bộ…');
-  const m=await getDoc(ref('meta')),lt=g(TK),ls=g(SK);
-  const rt=m.exists()?(m.data().t||0):0,old=m.exists()?(m.data().n||0):0;
-  let act='none';
-  if(!m.exists())act='push';
-  else if(rt===ls&&lt<=ls)act='none';
-  else if(!ls)act=isFresh()?'pull':(confirm('Tài khoản này đã có dữ liệu trên đám mây.\n\nOK = dùng dữ liệu đám mây (thay dữ liệu trên máy này)\nHủy = ghi đè đám mây bằng dữ liệu máy này')?'pull':'push');
-  else if(lt<=ls)act='pull';
-  else if(rt<=ls)act='push';
-  else act=rt>lt?'pull':'push';
-  if(act==='pull'){await doPull();return}
-  if(act==='push')await doPush(old);
+  setSt('Đang hợp nhất và đồng bộ…');
+  await syncSafely();ok=true;
   setSt('Đã đồng bộ lúc '+hm());
- }catch(e){ok=false;console.error(e);setSt('Lỗi đồng bộ');toast('Đồng bộ lỗi: '+(e.code||e.message))}
+  // Cập nhật giao diện với dữ liệu đã hợp nhất mà không tải lại trang.
+  if(typeof route==='function')route();
+ }catch(e){console.error(e);setSt('Lỗi đồng bộ – dữ liệu local vẫn được giữ');toast('Đồng bộ lỗi: '+(e.code||e.message||e))}
  finally{busy=false;ready=true;
-  if(again){again=false;sync()}else if(ok&&g(TK)>g(SK)){clearTimeout(timer);timer=setTimeout(sync,2500)}}
+  if(again){again=false;sync()}
+ }
 }
 window.cloudDirty=()=>{if(!user||!ready)return;clearTimeout(timer);timer=setTimeout(sync,2500);setSt('Chờ đồng bộ…')};
 document.addEventListener('click',async e=>{const b=e.target.closest('#syn [data-a]');if(!b)return;const a=b.dataset.a;
