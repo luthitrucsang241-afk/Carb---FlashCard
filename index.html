@@ -593,11 +593,12 @@ function speak(t){
   if(iOS){speechSynthesis.speak(u)}else{setTimeout(()=>speechSynthesis.speak(u),60)}
 }
 const has=(w,k)=>k==='fav'?!!w.fav:(w.tags||[]).includes(k);
-function tagSet(w,r){const t=new Set(w.tags||[]);t.add(r);if(r==='again')t.delete('good');if(r==='good')t.delete('again');w.tags=[...t]}
-function tagTgl(w,k){if(k==='fav'){w.fav=w.fav?0:1;return}const t=new Set(w.tags||[]);if(t.has(k))t.delete(k);else{t.add(k);if(k==='again')t.delete('good');if(k==='good')t.delete('again')}w.tags=[...t]}
+function touchTag(w,k){w.tagUpdated=w.tagUpdated&&typeof w.tagUpdated==='object'?w.tagUpdated:{};w.tagUpdated[k]=Date.now()}
+function tagSet(w,r){const t=new Set(w.tags||[]);t.add(r);touchTag(w,r);if(r==='again'){t.delete('good');touchTag(w,'good')}if(r==='good'){t.delete('again');touchTag(w,'again')}w.tags=[...t]}
+function tagTgl(w,k){if(k==='fav'){w.fav=w.fav?0:1;return}const t=new Set(w.tags||[]);if(t.has(k))t.delete(k);else t.add(k);touchTag(w,k);if(k==='again'){t.delete('good');touchTag(w,'good')}if(k==='good'){t.delete('again');touchTag(w,'again')}w.tags=[...t]}
 function tgC(k){const w=FC.l[FC.i];if(!w)return;tagTgl(w,k);save();vFlash()}
 function tgV(id,k){const w=S.words.find(x=>x.id===id);if(!w)return;tagTgl(w,k);save();vVocab()}
-function rate(w,r){const n=Date.now();tagSet(w,r);S.log.push({t:n,r,id:w.id});if(r==='again'){w.box=0;w.due=n+6e5}else if(r==='hard'){w.box=Math.max(w.box,0);w.due=n+DAY}else{w.box=Math.min(Math.max(w.box,-1)+1,STEPS.length-1);w.due=n+STEPS[w.box]*DAY}save()}
+function rate(w,r){const n=Date.now();tagSet(w,r);w.progressUpdated=n;S.log.push({t:n,r,id:w.id});if(r==='again'){w.box=0;w.due=n+6e5}else if(r==='hard'){w.box=Math.max(w.box,0);w.due=n+DAY}else{w.box=Math.min(Math.max(w.box,-1)+1,STEPS.length-1);w.due=n+STEPS[w.box]*DAY}save()}
 const topics=()=>[...new Set(S.words.map(w=>w.topic).filter(Boolean))].sort();
 const NAV=[['dashboard','Dashboard'],['vocab','My Vocabulary'],['flash','Flashcards'],['quiz','Quiz'],['listen','Listening'],['stats','Statistics'],['settings','Settings']];
 function route(){page=(location.hash.slice(1)||'dashboard');if(!NAV.some(n=>n[0]===page))page='dashboard';if(page!=='listen')LD=null;
@@ -1035,17 +1036,46 @@ function mergeArray(remote,local,keyFn){
  }
  return out;
 }
+function mergeWord(remoteWord,localWord){
+ const r=remoteWord||{},l=localWord||{},w={...r,...l};
+ const rt=r.tagUpdated&&typeof r.tagUpdated==='object'?r.tagUpdated:{};
+ const lt=l.tagUpdated&&typeof l.tagUpdated==='object'?l.tagUpdated:{};
+ const tags=new Set([...(Array.isArray(r.tags)?r.tags:[]),...(Array.isArray(l.tags)?l.tags:[])]);
+ const updated={...rt,...lt};
+ // Các trạng thái loại trừ nhau: dùng dấu thời gian thay đổi mới nhất.
+ // Với dữ liệu cũ chưa có dấu thời gian, ưu tiên "Chưa nhớ" để không vô tình đánh dấu đã nhớ.
+ for(const [a,b] of [['again','good']]){
+  const ra=Number(rt[a])||0,la=Number(lt[a])||0,rb=Number(rt[b])||0,lb=Number(lt[b])||0;
+  const aTime=Math.max(ra,la),bTime=Math.max(rb,lb);
+  if(aTime||bTime){
+   if(aTime>=bTime){tags.add(a);tags.delete(b);updated[a]=aTime;updated[b]=aTime}
+   else{tags.add(b);tags.delete(a);updated[a]=bTime;updated[b]=bTime}
+  }else if(tags.has(a)){tags.add(a);tags.delete(b)}
+ }
+ // Trạng thái độc lập như "Khó" được giữ nếu còn tồn tại trên một trong hai máy.
+ w.tags=[...tags];w.tagUpdated=updated;
+ // Tiến độ ôn tập lấy bản có lịch sử thao tác mới nhất cho từ đó.
+ const rTime=Number(r.progressUpdated)||0,lTime=Number(l.progressUpdated)||0;
+ if(lTime>rTime){w.box=l.box;w.due=l.due;w.progressUpdated=lTime}
+ else if(rTime){w.box=r.box;w.due=r.due;w.progressUpdated=rTime}
+ return w;
+}
 function mergeData(remote,local){
  const r=remote&&typeof remote==='object'?remote:{};
  const l=local&&typeof local==='object'?local:{};
  const out={...r,...l};
- // Giữ lại từ trên mọi thiết bị; cùng ID thì ưu tiên bản đang có trên máy hiện tại.
- out.words=mergeArray(r.words,l.words,x=>String((x&&x.en||'').trim().toLowerCase()||x&&x.id||JSON.stringify(x)));
- // Nếu cùng từ được khởi tạo với ID khác nhau trên hai máy, giữ ID cloud để lịch sử ôn tập còn liên kết.
+ // Giữ toàn bộ từ ở hai thiết bị; hợp nhất riêng trạng thái thay vì để local ghi đè cloud.
+ const wordKey=x=>String((x&&x.en||'').trim().toLowerCase()||x&&x.id||JSON.stringify(x));
+ const rm=new Map((Array.isArray(r.words)?r.words:[]).map(w=>[wordKey(w),w]));
+ const lm=new Map((Array.isArray(l.words)?l.words:[]).map(w=>[wordKey(w),w]));
+ const keys=[...new Set([...rm.keys(),...lm.keys()])];
+ out.words=keys.map(k=>mergeWord(rm.get(k),lm.get(k)));
+ // Nếu cùng từ được tạo với ID khác nhau trên hai máy, giữ ID cloud để lịch sử ôn tập còn liên kết.
  const remoteWordIds=new Map((r.words||[]).map(w=>[(w.en||'').trim().toLowerCase(),w.id]));
- out.words.forEach(w=>{const oldId=remoteWordIds.get((w.en||'').trim().toLowerCase());if(oldId)w.id=oldId});
+ const localToCanonical=new Map();
+ out.words.forEach(w=>{const oldId=remoteWordIds.get((w.en||'').trim().toLowerCase());if(oldId){localToCanonical.set(w.id,oldId);w.id=oldId}});
  // Lịch sử ôn tập/quiz là dữ liệu phát sinh: hợp nhất, không thay thế cả mảng.
- out.log=mergeArray(r.log,l.log,x=>`${x&&x.t}|${x&&x.id}|${x&&x.r}`);
+ out.log=mergeArray(r.log,l.log,x=>`${x&&x.t}|${x&&x.id}|${x&&x.r}`).map(x=>({...x,id:localToCanonical.get(x.id)||x.id}));
  out.quizzes=mergeArray(r.quizzes,l.quizzes,x=>`${x&&x.t}|${x&&x.type}|${x&&x.s}|${x&&x.n}`);
  // Các mảng khác (nếu phiên bản app có thêm) cũng được hợp nhất không mất phần tử.
  for(const k of new Set([...Object.keys(r),...Object.keys(l)])){
