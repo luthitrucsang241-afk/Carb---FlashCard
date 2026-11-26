@@ -593,12 +593,11 @@ function speak(t){
   if(iOS){speechSynthesis.speak(u)}else{setTimeout(()=>speechSynthesis.speak(u),60)}
 }
 const has=(w,k)=>k==='fav'?!!w.fav:(w.tags||[]).includes(k);
-function touchTag(w,k){w.tagUpdated=w.tagUpdated&&typeof w.tagUpdated==='object'?w.tagUpdated:{};w.tagUpdated[k]=Date.now()}
-function tagSet(w,r){const t=new Set(w.tags||[]);t.add(r);touchTag(w,r);if(r==='again'){t.delete('good');touchTag(w,'good')}if(r==='good'){t.delete('again');touchTag(w,'again')}w.tags=[...t]}
-function tagTgl(w,k){if(k==='fav'){w.fav=w.fav?0:1;return}const t=new Set(w.tags||[]);if(t.has(k))t.delete(k);else t.add(k);touchTag(w,k);if(k==='again'){t.delete('good');touchTag(w,'good')}if(k==='good'){t.delete('again');touchTag(w,'again')}w.tags=[...t]}
+function tagSet(w,r){const t=new Set(w.tags||[]);t.add(r);if(r==='again')t.delete('good');if(r==='good')t.delete('again');w.tags=[...t]}
+function tagTgl(w,k){if(k==='fav'){w.fav=w.fav?0:1;return}const t=new Set(w.tags||[]);if(t.has(k))t.delete(k);else{t.add(k);if(k==='again')t.delete('good');if(k==='good')t.delete('again')}w.tags=[...t]}
 function tgC(k){const w=FC.l[FC.i];if(!w)return;tagTgl(w,k);save();vFlash()}
 function tgV(id,k){const w=S.words.find(x=>x.id===id);if(!w)return;tagTgl(w,k);save();vVocab()}
-function rate(w,r){const n=Date.now();tagSet(w,r);w.progressUpdated=n;S.log.push({t:n,r,id:w.id});if(r==='again'){w.box=0;w.due=n+6e5}else if(r==='hard'){w.box=Math.max(w.box,0);w.due=n+DAY}else{w.box=Math.min(Math.max(w.box,-1)+1,STEPS.length-1);w.due=n+STEPS[w.box]*DAY}save()}
+function rate(w,r){const n=Date.now();tagSet(w,r);S.log.push({t:n,r,id:w.id});if(r==='again'){w.box=0;w.due=n+6e5}else if(r==='hard'){w.box=Math.max(w.box,0);w.due=n+DAY}else{w.box=Math.min(Math.max(w.box,-1)+1,STEPS.length-1);w.due=n+STEPS[w.box]*DAY}save()}
 const topics=()=>[...new Set(S.words.map(w=>w.topic).filter(Boolean))].sort();
 const NAV=[['dashboard','Dashboard'],['vocab','My Vocabulary'],['flash','Flashcards'],['quiz','Quiz'],['listen','Listening'],['stats','Statistics'],['settings','Settings']];
 function route(){page=(location.hash.slice(1)||'dashboard');if(!NAV.some(n=>n[0]===page))page='dashboard';if(page!=='listen')LD=null;
@@ -703,7 +702,7 @@ function prev(txt,json){let rows=[];try{if(json||/^\s*[\[{]/.test(txt)){let d=JS
 function doImp(){let ok=0;IMP.forEach((r,i)=>{if($('#i'+i)?.checked){S.words.push(mk(r.a));ok++}});save();closeM();route();toast(`Đã nhập ${ok} từ, bỏ qua ${IMP.length-ok}.`)}
 function exp(t){const txt=t==='json'?JSON.stringify(S,null,1):'en,ipa,pos,vi,def,ex,topic\n'+S.words.map(w=>[w.en,w.ipa,w.pos,w.vi,w.def,w.ex,w.topic].map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
  modal(`<h3>Xuất ${t.toUpperCase()}</h3><p class="mut">Sao chép nội dung và lưu vào file trên máy bạn.</p><textarea id="ex" rows="10" readonly>${esc(txt)}</textarea><div class="row" style="margin-top:8px"><button onclick="$('#ex').select();document.execCommand('copy');toast('Đã sao chép')">Sao chép</button><button class="g" onclick="closeM()">Đóng</button></div>`)}
-function startFC(t,m){let L=S.words.filter(w=>!t||w.topic===t);if(m==='due'){const n=Date.now();L=[...L.filter(w=>w.box>=0&&w.due<=n).sort((a,b)=>a.due-b.due),...L.filter(w=>w.box<0)]}if(['again','hard','good','fav'].includes(m)){L=L.filter(w=>has(w,m));if(!L.length){toast('Chưa có từ nào trong mục này.');return}}L=L.slice(0,S.set.per);if(!L.length){toast('Không có thẻ cần học – chọn “Học tất cả”.');L=S.words.filter(w=>!t||w.topic===t)}FC={l:L,i:0,f:0,t};S.sessions++;save();location.hash='flash';if(page==='flash')vFlash()}
+function startFC(t,m){let L=S.words.filter(w=>!t||w.topic===t);if(m==='due')L=L.filter(w=>w.box<0||w.due<=Date.now());if(['again','hard','good','fav'].includes(m)){L=L.filter(w=>has(w,m));if(!L.length){toast('Chưa có từ nào trong mục này.');return}}L=L.slice(0,S.set.per);if(!L.length){toast('Không có thẻ cần học – chọn “Học tất cả”.');L=S.words.filter(w=>!t||w.topic===t)}FC={l:L,i:0,f:0,t};S.sessions++;save();location.hash='flash';if(page==='flash')vFlash()}
 const IC={
  shuffle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="m4 4 5 5"/></svg>',
  prev:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>',
@@ -739,7 +738,7 @@ function vFlash(){if(!FC.l.length){const tp=FCT&&topics().includes(FCT)?FCT:'',a
 </div>`}
 function flip(){FC.f=!FC.f;$('#fc')?.classList.toggle('f',FC.f)}
 function mv(d){FC.i=Math.max(0,Math.min(FC.l.length,FC.i+d));FC.f=0;vFlash()}
-function rt(r){const w=FC.l[FC.i];if(!w)return;if(has(w,r)&&w.box>=0&&w.due>Date.now()){tagTgl(w,r);save()}else rate(w,r);vFlash()}
+function rt(r){const w=FC.l[FC.i];if(!w)return;if(has(w,r)){tagTgl(w,r);save()}else rate(w,r);vFlash()}
 document.addEventListener('keydown',e=>{if(page!=='flash'||!FC.l.length||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();flip()}if(e.key==='ArrowRight')mv(1);if(e.key==='ArrowLeft')mv(-1)});
 let QSRC=new Set(),QORD='rand',QLB='',QN=10;
 function qPool(){let a=S.words.filter(w=>(!QSRC.size||QSRC.has(w.topic))&&(!QLB||has(w,QLB)));a=[...a].sort(()=>Math.random()-.5);if(QORD==='weak')a.sort((x,y)=>x.box-y.box);else if(QORD==='new')a.sort((x,y)=>y.added-x.added);return a}
@@ -762,7 +761,7 @@ function startQ(l){const pool=l?null:qPool();if(!l&&pool.length<4)return toast('
    Chỉ tăng hộp khi từ đã đến hạn (tránh quiz lặp nhiều lần trong ngày làm lịch nhảy vọt);
    từ mới (chưa học) chỉ được tính khi tự gõ/điền từ, vì trắc nghiệm quá dễ đoán. */
 function qSrs(w,ok){const n=Date.now();
- if(!ok){if(w.box<0)return;w.box=0;w.due=n+6e5;save();return}
+ if(!ok){w.box=0;w.due=n+6e5;save();return}
  if(w.box<0){if(Q.t==='mc')return}else if(w.due>n)return;
  w.box=Math.min(Math.max(w.box,-1)+1,STEPS.length-1);w.due=n+STEPS[w.box]*DAY;save()}
 function ans(el,ok){if(Q.d)return;Q.d=1;const w0=Q.l[Q.i];qSrs(w0,!!ok);Q.a.push({en:w0.en,vi:w0.vi,ex:w0.ex||'',ok:!!ok,u:el.textContent});el.classList.add(ok?'ok':'no');if(ok)Q.s++;else Q.w.push(Q.l[Q.i]);nxt()}
@@ -1026,140 +1025,47 @@ function render(){const el=document.getElementById('syn');if(!el)return;
  el.innerHTML=user?`<div class="sy-i"><b>${esc(user.email||'')}</b><span id="sst">${esc(st)}</span></div><div class="seg"><button class="g" type="button" data-a="s">Đồng bộ ngay</button><button class="g" type="button" data-a="o">Đăng xuất</button></div>`:`<button class="g sy-b" type="button" data-a="i">Đăng nhập Google</button>${inApp?'<div class="mut" style="font-size:.8rem;margin-top:6px">Bạn đang mở trong trình duyệt của app khác (Zalo/Facebook…). Google chặn đăng nhập ở đây, hãy mở link bằng Safari hoặc Chrome.</div>':''}${err?`<div style="font-size:.8rem;margin-top:6px;color:#c0392b;overflow-wrap:anywhere">${esc(err)}</div>`:''}`}
 function chunks(s){const out=[];let i=0;while(i<s.length){let e=Math.min(i+CH,s.length);if(e<s.length){const c=s.charCodeAt(e-1);if(c>=0xD800&&c<=0xDBFF)e--}out.push(s.slice(i,e));i=e}return out.length?out:['']}
 const isFresh=()=>!localStorage.getItem(KEY)||(!(S.log||[]).length&&!S.sessions&&S.words.every(w=>SEED.some(x=>x[0]===w.en)));
-// Hợp nhất dữ liệu theo ID thay vì quyết định ghi đè dựa trên đồng hồ của thiết bị.
-function mergeArray(remote,local,keyFn){
- const out=[],seen=new Map();
- for(const item of [...(Array.isArray(remote)?remote:[]),...(Array.isArray(local)?local:[])]){
-  const key=keyFn(item);
-  if(seen.has(key)){const i=seen.get(key);out[i]={...out[i],...item};}
-  else{seen.set(key,out.length);out.push(item)}
- }
- return out;
+async function doPush(old){
+ const t=g(TK)||Date.now();
+ const c=JSON.parse(JSON.stringify(S));const u=c.user||{};const av=u.avatar||'',bn=u.banner||'';if(c.user){c.user.avatar='';c.user.banner=''}
+ const parts=chunks(JSON.stringify(c)),n=parts.length,big=x=>x.length>900000;
+ const b=writeBatch(db);
+ parts.forEach((v,i)=>b.set(ref('c'+i),{v}));
+ for(let i=n;i<old;i++)b.delete(ref('c'+i));
+ b.set(ref('avatar'),{v:big(av)?'':av});b.set(ref('banner'),{v:big(bn)?'':bn});
+ b.set(ref('meta'),{n,t,at:Date.now()});
+ await b.commit();
+ localStorage.setItem(TK,t);localStorage.setItem(SK,t);
+ if(big(av)||big(bn))toast('Ảnh quá lớn nên không đồng bộ ảnh đại diện/banner.');
 }
-function mergeWord(remoteWord,localWord){
- const r=remoteWord||{},l=localWord||{},w={...r,...l};
- const rt=r.tagUpdated&&typeof r.tagUpdated==='object'?r.tagUpdated:{};
- const lt=l.tagUpdated&&typeof l.tagUpdated==='object'?l.tagUpdated:{};
- const tags=new Set([...(Array.isArray(r.tags)?r.tags:[]),...(Array.isArray(l.tags)?l.tags:[])]);
- const updated={...rt,...lt};
- // Các trạng thái loại trừ nhau: dùng dấu thời gian thay đổi mới nhất.
- // Với dữ liệu cũ chưa có dấu thời gian, ưu tiên "Chưa nhớ" để không vô tình đánh dấu đã nhớ.
- for(const [a,b] of [['again','good']]){
-  const ra=Number(rt[a])||0,la=Number(lt[a])||0,rb=Number(rt[b])||0,lb=Number(lt[b])||0;
-  const aTime=Math.max(ra,la),bTime=Math.max(rb,lb);
-  if(aTime||bTime){
-   if(aTime>=bTime){tags.add(a);tags.delete(b);updated[a]=aTime;updated[b]=aTime}
-   else{tags.add(b);tags.delete(a);updated[a]=bTime;updated[b]=bTime}
-  }else if(tags.has(a)){tags.add(a);tags.delete(b)}
- }
- // Trạng thái độc lập như "Khó" được giữ nếu còn tồn tại trên một trong hai máy.
- w.tags=[...tags];w.tagUpdated=updated;
- // Tiến độ ôn tập lấy bản có lịch sử thao tác mới nhất cho từ đó.
- const rTime=Number(r.progressUpdated)||0,lTime=Number(l.progressUpdated)||0;
- if(lTime>rTime){w.box=l.box;w.due=l.due;w.progressUpdated=lTime}
- else if(rTime){w.box=r.box;w.due=r.due;w.progressUpdated=rTime}
- return w;
-}
-function mergeData(remote,local){
- const r=remote&&typeof remote==='object'?remote:{};
- const l=local&&typeof local==='object'?local:{};
- const out={...r,...l};
- // Giữ toàn bộ từ ở hai thiết bị; hợp nhất riêng trạng thái thay vì để local ghi đè cloud.
- const wordKey=x=>String((x&&x.en||'').trim().toLowerCase()||x&&x.id||JSON.stringify(x));
- const rm=new Map((Array.isArray(r.words)?r.words:[]).map(w=>[wordKey(w),w]));
- const lm=new Map((Array.isArray(l.words)?l.words:[]).map(w=>[wordKey(w),w]));
- const keys=[...new Set([...rm.keys(),...lm.keys()])];
- out.words=keys.map(k=>mergeWord(rm.get(k),lm.get(k)));
- // Nếu cùng từ được tạo với ID khác nhau trên hai máy, giữ ID cloud để lịch sử ôn tập còn liên kết.
- const remoteWordIds=new Map((r.words||[]).map(w=>[(w.en||'').trim().toLowerCase(),w.id]));
- const localToCanonical=new Map();
- out.words.forEach(w=>{const oldId=remoteWordIds.get((w.en||'').trim().toLowerCase());if(oldId){localToCanonical.set(w.id,oldId);w.id=oldId}});
- // Lịch sử ôn tập/quiz là dữ liệu phát sinh: hợp nhất, không thay thế cả mảng.
- out.log=mergeArray(r.log,l.log,x=>`${x&&x.t}|${x&&x.id}|${x&&x.r}`).map(x=>({...x,id:localToCanonical.get(x.id)||x.id}));
- out.quizzes=mergeArray(r.quizzes,l.quizzes,x=>`${x&&x.t}|${x&&x.type}|${x&&x.s}|${x&&x.n}`);
- // Các mảng khác (nếu phiên bản app có thêm) cũng được hợp nhất không mất phần tử.
- for(const k of new Set([...Object.keys(r),...Object.keys(l)])){
-  if(['words','log','quizzes','user'].includes(k))continue;
-  if(Array.isArray(r[k])||Array.isArray(l[k]))out[k]=mergeArray(r[k],l[k],x=>x&&x.id!=null?String(x.id):JSON.stringify(x));
-  else if(r[k]&&l[k]&&typeof r[k]==='object'&&typeof l[k]==='object')out[k]={...r[k],...l[k]};
- }
- out.user={...(r.user||{}),...(l.user||{})};
- return out;
-}
-function cloudChunks(s){const out=[];let i=0;while(i<s.length){let e=Math.min(i+CH,s.length);if(e<s.length&&s.charCodeAt(e-1)>=0xD800&&s.charCodeAt(e-1)<=0xDBFF)e--;out.push(s.slice(i,e));i=e}return out.length?out:['']}
-async function syncSafely(){
- // Sao lưu bản local trước mọi thao tác cloud để có đường lui khi dữ liệu lỗi.
- const localRaw=localStorage.getItem(KEY)||JSON.stringify(S);
- try{localStorage.setItem(KEY+'_sync_backup',localRaw)}catch(e){console.warn('Không đủ dung lượng tạo bản sao lưu phụ; vẫn giữ nguyên dữ liệu local và tiếp tục hợp nhất an toàn.',e)}
- const localData=JSON.parse(localRaw);
- let previous={};try{previous=JSON.parse(localStorage.getItem(KEY+'_synced_snapshot')||'{}')}catch(e){}
- const hadSnapshot=Array.isArray(previous.words);
- const metaRef=ref('meta');
- await db.runTransaction(async tx=>{
-  const metaSnap=await tx.get(metaRef);
-  const meta=metaSnap.exists?metaSnap.data():{};
-  const oldN=Number(meta.n)||0;
-  const cloudRefs=[...Array(oldN).keys()].map(i=>ref('c'+i));
-  const cloudSnaps=[];
-  for(let i=0;i<cloudRefs.length;i+=10){
-   const group=cloudRefs.slice(i,i+10);
-   const got=await Promise.all(group.map(r=>tx.get(r)));
-   cloudSnaps.push(...got);
-  }
-  const avRef=ref('avatar'),bnRef=ref('banner');
-  const avSnap=await tx.get(avRef),bnSnap=await tx.get(bnRef);
-  let remote={};
-  if(metaSnap.exists&&oldN){
-   const raw=cloudSnaps.map(x=>x.exists?x.data().v||'':'').join('');
-   if(!raw)throw new Error('Dữ liệu đám mây trống bất thường; đã dừng để tránh ghi đè.');
-   remote=JSON.parse(raw);
-   remote.user=remote.user||{};
-   remote.user.avatar=avSnap.exists?avSnap.data().v||'':'';
-   remote.user.banner=bnSnap.exists?bnSnap.data().v||'':'';
-  }
-  // Nếu máy mới chỉ có bộ từ mẫu, không để dữ liệu mặc định ghi đè hồ sơ/cài đặt trên cloud.
-  const freshLocal=!localStorage.getItem(KEY);
-  const localForMerge=freshLocal&&metaSnap.exists?{...localData,words:[],log:[],quizzes:[],user:{},set:{},tp:{}}:localData;
-  const merged=mergeData(remote,localForMerge);
-  // Từ lần đồng bộ thứ hai trở đi có thể nhận diện mục đã bị xóa trên máy này.
-  if(hadSnapshot&&!freshLocal){
-   const currentIds=new Set((localData.words||[]).map(w=>String((w.en||'').trim().toLowerCase()||w.id)));
-   const deleted=new Set((previous.words||[]).filter(w=>!currentIds.has(String((w.en||'').trim().toLowerCase()||w.id))).map(w=>String((w.en||'').trim().toLowerCase()||w.id)));
-   if(deleted.size)merged.words=merged.words.filter(w=>!deleted.has(String((w.en||'').trim().toLowerCase()||w.id)));
-  }
-  const u=merged.user||{};const avatar=u.avatar||'',banner=u.banner||'';
-  const payload=JSON.parse(JSON.stringify(merged));
-  if(payload.user){payload.user.avatar='';payload.user.banner=''}
-  const parts=cloudChunks(JSON.stringify(payload));
-  // Firestore giới hạn 500 thao tác/transaction; dừng an toàn nếu vượt giới hạn.
-  if(parts.length+Math.max(0,oldN-parts.length)+3>490)throw new Error('Dữ liệu quá lớn để đồng bộ an toàn trong một giao dịch. Hãy xuất bản sao lưu và liên hệ để nâng cấp cơ chế lưu trữ.');
-  parts.forEach((v,i)=>tx.set(ref('c'+i),{v}));
-  for(let i=parts.length;i<oldN;i++)tx.delete(ref('c'+i));
-  tx.set(avRef,{v:avatar.length>900000?'':avatar});
-  tx.set(bnRef,{v:banner.length>900000?'':banner});
-  const rev=(Number(meta.rev)||0)+1;
-  tx.set(metaRef,{n:parts.length,rev,at:Date.now(),t:Date.now()});
-  // Lưu kết quả hợp nhất sau khi transaction commit thành công.
-  window.__lexoraMerged=merged;
- });
- if(!window.__lexoraMerged)throw new Error('Không nhận được kết quả đồng bộ.');
- S=window.__lexoraMerged;delete window.__lexoraMerged;
- localStorage.setItem(KEY,JSON.stringify(S));
- localStorage.setItem(KEY+'_synced_snapshot',JSON.stringify({words:(S.words||[]).map(w=>({id:w.id,en:w.en}))}));
- const stamp=Date.now();localStorage.setItem(TK,String(stamp));localStorage.setItem(SK,String(stamp));
+async function doPull(){
+ const m=await getDoc(ref('meta'));const{n,t}=m.data();
+ const ds=await Promise.all([...Array(n).keys()].map(i=>getDoc(ref('c'+i))).concat([getDoc(ref('avatar')),getDoc(ref('banner'))]));
+ const d=JSON.parse(ds.slice(0,n).map(x=>x.data().v).join(''));
+ d.user=d.user||{name:''};
+ const av=ds[n],bn=ds[n+1];d.user.avatar=av.exists()?(av.data().v||''):'';d.user.banner=bn.exists()?(bn.data().v||''):'';
+ localStorage.setItem(KEY,JSON.stringify(d));localStorage.setItem(TK,t);localStorage.setItem(SK,t);
+ toast('Đã tải dữ liệu từ đám mây');setTimeout(()=>location.reload(),400);
 }
 async function sync(){
- if(!user)return;if(busy){again=true;return}busy=true;let ok=false;
+ if(!user)return;if(busy){again=true;return}busy=true;let ok=true;
  try{
-  setSt('Đang hợp nhất và đồng bộ…');
-  await syncSafely();ok=true;
+  setSt('Đang đồng bộ…');
+  const m=await getDoc(ref('meta')),lt=g(TK),ls=g(SK);
+  const rt=m.exists()?(m.data().t||0):0,old=m.exists()?(m.data().n||0):0;
+  let act='none';
+  if(!m.exists())act='push';
+  else if(rt===ls&&lt<=ls)act='none';
+  else if(!ls)act=isFresh()?'pull':(confirm('Tài khoản này đã có dữ liệu trên đám mây.\n\nOK = dùng dữ liệu đám mây (thay dữ liệu trên máy này)\nHủy = ghi đè đám mây bằng dữ liệu máy này')?'pull':'push');
+  else if(lt<=ls)act='pull';
+  else if(rt<=ls)act='push';
+  else act=rt>lt?'pull':'push';
+  if(act==='pull'){await doPull();return}
+  if(act==='push')await doPush(old);
   setSt('Đã đồng bộ lúc '+hm());
-  // Cập nhật giao diện với dữ liệu đã hợp nhất mà không tải lại trang.
-  if(typeof route==='function')route();
- }catch(e){console.error(e);setSt('Lỗi đồng bộ – dữ liệu local vẫn được giữ');toast('Đồng bộ lỗi: '+(e.code||e.message||e))}
+ }catch(e){ok=false;console.error(e);setSt('Lỗi đồng bộ');toast('Đồng bộ lỗi: '+(e.code||e.message))}
  finally{busy=false;ready=true;
-  if(again){again=false;sync()}
- }
+  if(again){again=false;sync()}else if(ok&&g(TK)>g(SK)){clearTimeout(timer);timer=setTimeout(sync,2500)}}
 }
 window.cloudDirty=()=>{if(!user||!ready)return;clearTimeout(timer);timer=setTimeout(sync,2500);setSt('Chờ đồng bộ…')};
 document.addEventListener('click',async e=>{const b=e.target.closest('#syn [data-a]');if(!b)return;const a=b.dataset.a;
