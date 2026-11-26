@@ -561,7 +561,7 @@ let S=load(),FC={l:[],i:0,f:0},Q=null,page='dashboard';
 function mk(a){return{id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),en:a[0]||'',ipa:a[1]||'',pos:a[2]||'',vi:a[3]||'',def:a[4]||'',ex:a[5]||'',topic:a[6]||'General',fav:0,added:Date.now(),box:-1,due:0,syn:'',ant:'',note:''}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.words)){d.tp=d.tp||{order:[],hide:[],color:{}};{const m={},need=new Set();d.words.forEach(w=>{m[w.id]=w;if(!Array.isArray(w.tags)){w.tags=[];need.add(w.id)}});if(Array.isArray(d.log))d.log.forEach(x=>{const w=m[x.id];if(w&&need.has(x.id))tagSet(w,x.r)})}return d}}catch(e){}
  return{tp:{order:[],hide:[],color:{}},words:SEED.map(mk),log:[],quizzes:[],sessions:0,set:{theme:'',accent:'#111418',fs:16,sound:1,per:10}}}
-function save(){if(window.__noSave)return;try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(KEY+'_t',Date.now());if(window.cloudDirty)window.cloudDirty()}catch(e){toast('Bộ nhớ trình duyệt đã đầy hoặc bị chặn – hãy xuất bản sao lưu.')}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(KEY+'_t',Date.now());if(window.cloudDirty)window.cloudDirty()}catch(e){toast('Bộ nhớ trình duyệt đã đầy hoặc bị chặn – hãy xuất bản sao lưu.')}}
 function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',2600)}
 function applySet(){const r=document.documentElement;if(S.set.theme)r.dataset.theme=S.set.theme;else delete r.dataset.theme;(S.set.accent==='#7c9a82'||S.set.accent==='#111418')?r.style.removeProperty('--ac'):r.style.setProperty('--ac',S.set.accent);r.style.setProperty('--fs',S.set.fs+'px');renderUser()}
 const dkey=t=>{const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()};
@@ -905,7 +905,7 @@ function lGrade(){LS();const x=S.listen.find(a=>a.id===LD),u=toks($('#ltx').valu
  $('#lres').innerHTML=`<div class="card">${lResult(d)}<div class="row" style="margin-top:12px"><button onclick="$('#ltx').value='';$('#lwc').textContent='0 từ';$('#lres').innerHTML='';window.scrollTo(0,0);lReplay()">Làm lại</button></div></div>`;
  $('#lh').innerHTML=dRows(S.dict.filter(a=>a.lid===x.id).reverse());$('#lres').scrollIntoView({behavior:'smooth',block:'start'})}
 
-window.addEventListener('hashchange',route);applySet();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}route();
+window.addEventListener('hashchange',route);applySet();save();route();
 
 /* ===== Custom dropdown (thay <select> mặc định) ===== */
 (function(){
@@ -1044,7 +1044,7 @@ async function doPull(){
  const d=JSON.parse(ds.slice(0,n).map(x=>x.data().v).join(''));
  d.user=d.user||{name:''};
  const av=ds[n],bn=ds[n+1];d.user.avatar=av.exists()?(av.data().v||''):'';d.user.banner=bn.exists()?(bn.data().v||''):'';
- window.__noSave=1;localStorage.setItem(KEY,JSON.stringify(d));localStorage.setItem(TK,t);localStorage.setItem(SK,t);
+ localStorage.setItem(KEY,JSON.stringify(d));localStorage.setItem(TK,t);localStorage.setItem(SK,t);
  toast('Đã tải dữ liệu từ đám mây');setTimeout(()=>location.reload(),400);
 }
 async function sync(){
@@ -1063,7 +1063,7 @@ async function sync(){
   if(act==='pull'){await doPull();return}
   if(act==='push')await doPush(old);
   setSt('Đã đồng bộ lúc '+hm());
- }catch(e){ok=false;console.error(e);setSt('Lỗi đồng bộ');toast(e.code==='permission-denied'?'Đồng bộ lỗi: Firestore Rules đang chặn (permission-denied)':'Đồng bộ lỗi: '+(e.code||e.message))}
+ }catch(e){ok=false;console.error(e);setSt('Lỗi đồng bộ');toast('Đồng bộ lỗi: '+(e.code||e.message))}
  finally{busy=false;ready=true;
   if(again){again=false;sync()}else if(ok&&g(TK)>g(SK)){clearTimeout(timer);timer=setTimeout(sync,2500)}}
 }
@@ -1080,7 +1080,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('#syn [data
 getRedirectResult(auth).catch(showErr);
 onAuthStateChanged(auth,u=>{user=u;ready=false;st=u?'Đang kết nối…':'';render();if(u)sync()});
 const again2=()=>{if(user&&ready&&document.visibilityState==='visible')sync()};
-document.addEventListener('visibilitychange',again2);addEventListener('online',again2);addEventListener('focus',again2);
+document.addEventListener('visibilitychange',again2);addEventListener('online',again2);
 render();
 </script>
 </body></html>
