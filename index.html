@@ -561,7 +561,24 @@ let S=load(),FC={l:[],i:0,f:0},Q=null,page='dashboard';
 function mk(a){return{id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),en:a[0]||'',ipa:a[1]||'',pos:a[2]||'',vi:a[3]||'',def:a[4]||'',ex:a[5]||'',topic:a[6]||'General',fav:0,added:Date.now(),box:-1,due:0,syn:'',ant:'',note:''}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.words)){d.tp=d.tp||{order:[],hide:[],color:{}};{const m={},need=new Set();d.words.forEach(w=>{m[w.id]=w;if(!Array.isArray(w.tags)){w.tags=[];need.add(w.id)}});if(Array.isArray(d.log))d.log.forEach(x=>{const w=m[x.id];if(w&&need.has(x.id))tagSet(w,x.r)})}return d}}catch(e){}
  return{tp:{order:[],hide:[],color:{}},words:SEED.map(mk),log:[],quizzes:[],sessions:0,set:{theme:'',accent:'#111418',fs:16,sound:1,per:10}}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(KEY+'_t',Date.now());if(window.cloudDirty)window.cloudDirty()}catch(e){toast('Bộ nhớ trình duyệt đã đầy hoặc bị chặn – hãy xuất bản sao lưu.')}}
+const jw=o=>{const{u,...r}=o;return JSON.stringify(r)};
+const cfgSig=()=>JSON.stringify([S.set,S.tp,S.user]);
+const SIGK=()=>JSON.stringify([S.log.length,S.quizzes.length,(S.dict||[]).length,S.sessions||0]);
+let SNAP={w:new Map(),l:new Map(),sg:'',cfg:''};
+function snapInit(){SNAP.w=new Map(S.words.map(w=>[w.id,jw(w)]));SNAP.l=new Map((S.listen||[]).map(x=>[x.id,jw(x)]));SNAP.sg=SIGK();SNAP.cfg=cfgSig()}
+function stamp(arr,map){let ch=0;const now=Date.now(),ids=new Set();
+ arr.forEach(o=>{ids.add(o.id);const j=jw(o);if(map.get(o.id)!==j){o.u=now;map.set(o.id,j);ch=1}});
+ S.del=S.del||{};
+ for(const id of [...map.keys()])if(!ids.has(id)){S.del[id]=now;map.delete(id);ch=1}
+ return ch}
+snapInit();
+function save(){try{
+ let ch=stamp(S.words,SNAP.w);if(stamp(S.listen||[],SNAP.l))ch=1;
+ if(SIGK()!==SNAP.sg){SNAP.sg=SIGK();ch=1}
+ if(cfgSig()!==SNAP.cfg){SNAP.cfg=cfgSig();S.su=Date.now();ch=1}
+ localStorage.setItem(KEY,JSON.stringify(S));
+ if(ch){localStorage.setItem(KEY+'_d','1');if(window.cloudDirty)window.cloudDirty()}
+}catch(e){toast('Bộ nhớ trình duyệt đã đầy hoặc bị chặn – hãy xuất bản sao lưu.')}}
 function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',2600)}
 function applySet(){const r=document.documentElement;if(S.set.theme)r.dataset.theme=S.set.theme;else delete r.dataset.theme;(S.set.accent==='#7c9a82'||S.set.accent==='#111418')?r.style.removeProperty('--ac'):r.style.setProperty('--ac',S.set.accent);r.style.setProperty('--fs',S.set.fs+'px');renderUser()}
 const dkey=t=>{const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()};
@@ -1013,61 +1030,97 @@ try{
 }
 const cfg={apiKey:"AIzaSyA0f8cKAWMiU_cWAkw4jw5NoMuq89wXzrQ",authDomain:location.hostname==='carb-flashcard.vercel.app'?location.hostname:'crab-25de7.firebaseapp.com',projectId:"crab-25de7",storageBucket:"crab-25de7.firebasestorage.app",messagingSenderId:"161769266581",appId:"1:161769266581:web:a297b01065324e71dfaa9c"};
 const app=initializeApp(cfg),auth=getAuth(app),db=getFirestore(app);
-const TK=KEY+'_t',SK=KEY+'_s',CH=200000;
-let user=null,ready=false,busy=false,again=false,timer=0,st='',err='';
+
+const SK=KEY+'_s',DK=KEY+'_d',CH=200000;
+let user=null,ready=false,busy=false,again=false,timer=0,st='',err='',unsub=null;
 const inApp=/FBAN|FBAV|FB_IAB|Zalo|Instagram|Messenger|Line\/|MicroMessenger/i.test(navigator.userAgent);
 const g=k=>+localStorage.getItem(k)||0;
 const ref=n=>doc(db,'users',user.uid,'sync',n);
 const hm=()=>new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+const onSnapshot=(r,cb,fail)=>r.onSnapshot(cb,fail);
 function showErr(x){const c=x.code||'';err=c==='auth/popup-closed-by-user'?'Cửa sổ đăng nhập đã đóng. Nếu bạn không tự đóng, trình duyệt đang chặn – hãy thử lại hoặc mở bằng Safari/Chrome.':c==='auth/operation-not-supported-in-this-environment'?'Trang đang chạy ở nơi không hỗ trợ đăng nhập (bản xem trước, file mở trực tiếp, chế độ ẩn danh hoặc đã chặn lưu trữ/cookie). Hãy mở https://carb-flashcard.vercel.app trong tab thường.':c==='auth/unauthorized-domain'?'Domain này chưa được thêm vào Authorized domains của Firebase ('+location.hostname+').':'Lỗi đăng nhập: '+(c||x.message||x);console.error(x);render();toast('Đăng nhập chưa được')}
 function setSt(t){st=t;const e=document.getElementById('sst');if(e)e.textContent=t}
 function render(){const el=document.getElementById('syn');if(!el)return;
  el.innerHTML=user?`<div class="sy-i"><b>${esc(user.email||'')}</b><span id="sst">${esc(st)}</span></div><div class="seg"><button class="g" type="button" data-a="s">Đồng bộ ngay</button><button class="g" type="button" data-a="o">Đăng xuất</button></div>`:`<button class="g sy-b" type="button" data-a="i">Đăng nhập Google</button>${inApp?'<div class="mut" style="font-size:.8rem;margin-top:6px">Bạn đang mở trong trình duyệt của app khác (Zalo/Facebook…). Google chặn đăng nhập ở đây, hãy mở link bằng Safari hoặc Chrome.</div>':''}${err?`<div style="font-size:.8rem;margin-top:6px;color:#c0392b;overflow-wrap:anywhere">${esc(err)}</div>`:''}`}
 function chunks(s){const out=[];let i=0;while(i<s.length){let e=Math.min(i+CH,s.length);if(e<s.length){const c=s.charCodeAt(e-1);if(c>=0xD800&&c<=0xDBFF)e--}out.push(s.slice(i,e));i=e}return out.length?out:['']}
-const isFresh=()=>!localStorage.getItem(KEY)||(!(S.log||[]).length&&!S.sessions&&S.words.every(w=>SEED.some(x=>x[0]===w.en)));
+const isFresh=()=>localStorage.getItem(DK)!=='1'&&!(S.log||[]).length&&!S.sessions&&!(S.listen||[]).length&&S.words.every(w=>SEED.some(x=>x[0]===w.en));
+
+/* ---- gộp dữ liệu (không ghi đè) ---- */
+function mergeIn(R){
+ let chg=0,ahead=0;const now=Date.now();
+ S.del=S.del||{};S.listen=S.listen||[];S.dict=S.dict||[];S.quizzes=S.quizzes||[];S.log=S.log||[];
+ const del={...(R.del||{})};for(const k in S.del)if(!(del[k]>=S.del[k]))del[k]=S.del[k];
+ const mergeList=(L,RL)=>{
+  const rm=new Map((RL||[]).map(o=>[o.id,o])),lm=new Map(L.map(o=>[o.id,o]));
+  for(const [id,r] of rm){const l=lm.get(id);
+   if(del[id]>(r.u||0)){if(l){if(del[id]>(l.u||0)){L.splice(L.indexOf(l),1);chg=1}else ahead=1}continue}
+   if(!l){L.push(r);chg=1}
+   else if((r.u||0)>(l.u||0)){Object.assign(l,r);chg=1}
+   else if((l.u||0)>(r.u||0))ahead=1}
+  for(const l of L.slice())if(!rm.has(l.id)){if(del[l.id]>(l.u||0)){L.splice(L.indexOf(l),1);chg=1}else ahead=1}
+ };
+ const uni=(L,RL,key)=>{RL=RL||[];const s=new Set(L.map(key)),rs=new Set(RL.map(key));
+  RL.forEach(x=>{if(!s.has(key(x))){L.push(x);chg=1}});if(L.some(x=>!rs.has(key(x))))ahead=1};
+ mergeList(S.words,R.words);mergeList(S.listen,R.listen);
+ // trùng từ (cùng chữ tiếng Anh, khác id): giữ bản mới hơn
+ const seen=new Map();
+ for(const w of S.words.slice()){const k=w.en.toLowerCase(),o=seen.get(k);
+  if(!o)seen.set(k,w);else{const keep=(o.u||0)>=(w.u||0)?o:w,drop=keep===o?w:o;S.words.splice(S.words.indexOf(drop),1);seen.set(k,keep);del[drop.id]=now;chg=1;ahead=1}}
+ uni(S.log,R.log,x=>x.t+'|'+x.id+'|'+x.r);S.log.sort((a,b)=>a.t-b.t);
+ uni(S.quizzes,R.quizzes,x=>x.t);S.quizzes.sort((a,b)=>a.t-b.t);
+ uni(S.dict,R.dict,x=>x.id);S.dict.sort((a,b)=>a.t-b.t);
+ S.dict=S.dict.filter(d=>S.listen.some(x=>x.id===d.lid));
+ if((R.su||0)>(S.su||0)){S.set=R.set;S.tp=R.tp;S.user=R.user;S.su=R.su;chg=1}else if((S.su||0)>(R.su||0))ahead=1;
+ if((R.sessions||0)>(S.sessions||0)){S.sessions=R.sessions;chg=1}else if((S.sessions||0)>(R.sessions||0))ahead=1;
+ S.del=del;
+ return{chg,ahead}}
+function refreshUI(){const a=document.activeElement;
+ if($('#modal').classList.contains('on')||(a&&/INPUT|TEXTAREA|SELECT/.test(a.tagName)&&a.id!=='q')||(page==='listen'&&LD))return;
+ const y=scrollY;route();scrollTo(0,y)}
+function afterChange(){snapInit();localStorage.setItem(KEY,JSON.stringify(S));applySet();refreshUI()}
+function adopt(R){Object.keys(S).forEach(k=>delete S[k]);Object.assign(S,R);
+ S.tp=S.tp||{order:[],hide:[],color:{}};S.set=S.set||{theme:'',accent:'#111418',fs:16,sound:1,per:10};
+ S.quizzes=S.quizzes||[];S.log=S.log||[];S.words.forEach(w=>{if(!Array.isArray(w.tags))w.tags=[]});afterChange()}
+
+async function loadRemote(md){const n=md.n;
+ const ds=await Promise.all([...Array(n).keys()].map(i=>getDoc(ref('c'+i))).concat([getDoc(ref('avatar')),getDoc(ref('banner'))]));
+ const d=JSON.parse(ds.slice(0,n).map(x=>x.data().v).join(''));
+ d.user=d.user||{name:''};const av=ds[n],bn=ds[n+1];
+ d.user.avatar=av.exists()?(av.data().v||''):'';d.user.banner=bn.exists()?(bn.data().v||''):'';return d}
 async function doPush(old){
- const t=g(TK)||Date.now();
- const c=JSON.parse(JSON.stringify(S));const u=c.user||{};const av=u.avatar||'',bn=u.banner||'';if(c.user){c.user.avatar='';c.user.banner=''}
- const parts=chunks(JSON.stringify(c)),n=parts.length,big=x=>x.length>900000;
- const b=writeBatch(db);
+ const t=Date.now(),c=JSON.parse(JSON.stringify(S)),u=c.user||{},av=u.avatar||'',bn=u.banner||'';
+ if(c.user){c.user.avatar='';c.user.banner=''}
+ const parts=chunks(JSON.stringify(c)),n=parts.length,big=x=>x.length>900000,b=writeBatch(db);
  parts.forEach((v,i)=>b.set(ref('c'+i),{v}));
  for(let i=n;i<old;i++)b.delete(ref('c'+i));
  b.set(ref('avatar'),{v:big(av)?'':av});b.set(ref('banner'),{v:big(bn)?'':bn});
  b.set(ref('meta'),{n,t,at:Date.now()});
- await b.commit();
- localStorage.setItem(TK,t);localStorage.setItem(SK,t);
+ const prev=localStorage.getItem(SK);
+ localStorage.setItem(SK,t);localStorage.removeItem(DK);
+ try{await b.commit()}catch(e){localStorage.setItem(DK,'1');prev?localStorage.setItem(SK,prev):localStorage.removeItem(SK);throw e}
  if(big(av)||big(bn))toast('Ảnh quá lớn nên không đồng bộ ảnh đại diện/banner.');
 }
-async function doPull(){
- const m=await getDoc(ref('meta'));const{n,t}=m.data();
- const ds=await Promise.all([...Array(n).keys()].map(i=>getDoc(ref('c'+i))).concat([getDoc(ref('avatar')),getDoc(ref('banner'))]));
- const d=JSON.parse(ds.slice(0,n).map(x=>x.data().v).join(''));
- d.user=d.user||{name:''};
- const av=ds[n],bn=ds[n+1];d.user.avatar=av.exists()?(av.data().v||''):'';d.user.banner=bn.exists()?(bn.data().v||''):'';
- localStorage.setItem(KEY,JSON.stringify(d));localStorage.setItem(TK,t);localStorage.setItem(SK,t);
- toast('Đã tải dữ liệu từ đám mây');setTimeout(()=>location.reload(),400);
-}
 async function sync(){
- if(!user)return;if(busy){again=true;return}busy=true;let ok=true;
+ if(!user)return;if(busy){again=true;return}busy=true;
  try{
   setSt('Đang đồng bộ…');
-  const m=await getDoc(ref('meta')),lt=g(TK),ls=g(SK);
-  const rt=m.exists()?(m.data().t||0):0,old=m.exists()?(m.data().n||0):0;
-  let act='none';
-  if(!m.exists())act='push';
-  else if(rt===ls&&lt<=ls)act='none';
-  else if(!ls)act=isFresh()?'pull':(confirm('Tài khoản này đã có dữ liệu trên đám mây.\n\nOK = dùng dữ liệu đám mây (thay dữ liệu trên máy này)\nHủy = ghi đè đám mây bằng dữ liệu máy này')?'pull':'push');
-  else if(lt<=ls)act='pull';
-  else if(rt<=ls)act='push';
-  else act=rt>lt?'pull':'push';
-  if(act==='pull'){await doPull();return}
-  if(act==='push')await doPush(old);
+  const m=await getDoc(ref('meta'));let old=0,rec=null,push=localStorage.getItem(DK)==='1'||!m.exists();
+  if(m.exists()){const md=m.data();old=md.n||0;if(md.t!==g(SK))rec=await loadRemote(md)}
+  if(rec){
+   if(isFresh())adopt(rec);
+   else{const r=mergeIn(rec);if(r.ahead)push=true;if(r.chg)afterChange();else localStorage.setItem(KEY,JSON.stringify(S))}
+  }
+  if(push)await doPush(old);
+  else if(m.exists())localStorage.setItem(SK,m.data().t);
   setSt('Đã đồng bộ lúc '+hm());
- }catch(e){ok=false;console.error(e);setSt('Lỗi đồng bộ');toast('Đồng bộ lỗi: '+(e.code||e.message))}
+ }catch(e){console.error(e);setSt('Lỗi đồng bộ');toast('Đồng bộ lỗi: '+(e.code||e.message))}
  finally{busy=false;ready=true;
-  if(again){again=false;sync()}else if(ok&&g(TK)>g(SK)){clearTimeout(timer);timer=setTimeout(sync,2500)}}
+  if(again){again=false;sync()}else if(localStorage.getItem(DK)==='1'){clearTimeout(timer);timer=setTimeout(sync,3000)}}
 }
-window.cloudDirty=()=>{if(!user||!ready)return;clearTimeout(timer);timer=setTimeout(sync,2500);setSt('Chờ đồng bộ…')};
+window.cloudDirty=()=>{if(!user||!ready)return;clearTimeout(timer);timer=setTimeout(sync,1200);setSt('Chờ đồng bộ…')};
+function watch(){if(unsub){unsub();unsub=null}if(!user)return;
+ unsub=onSnapshot(ref('meta'),s=>{if(!s.exists)return;const t=(s.data()||{}).t;if(t&&t!==g(SK)&&ready)sync()},e=>console.error(e))}
+
 document.addEventListener('click',async e=>{const b=e.target.closest('#syn [data-a]');if(!b)return;const a=b.dataset.a;
  if(a==='i'){err='';render();const pv=new GoogleAuthProvider();
   if(/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)){try{await signInWithRedirect(auth,pv)}catch(x){showErr(x)}return}
@@ -1078,9 +1131,10 @@ document.addEventListener('click',async e=>{const b=e.target.closest('#syn [data
  else if(a==='s')sync();
  else if(a==='o'){await signOut(auth);localStorage.removeItem(SK);toast('Đã đăng xuất')}});
 getRedirectResult(auth).catch(showErr);
-onAuthStateChanged(auth,u=>{user=u;ready=false;st=u?'Đang kết nối…':'';render();if(u)sync()});
-const again2=()=>{if(user&&ready&&document.visibilityState==='visible')sync()};
+onAuthStateChanged(auth,u=>{user=u;ready=false;st=u?'Đang kết nối…':'';render();watch();if(u)sync()});
+const again2=()=>{if(user&&ready&&(document.visibilityState==='visible'||localStorage.getItem(DK)==='1'))sync()};
 document.addEventListener('visibilitychange',again2);addEventListener('online',again2);
 render();
+
 </script>
 </body></html>
