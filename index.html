@@ -561,7 +561,7 @@ let S=load(),FC={l:[],i:0,f:0},Q=null,page='dashboard';
 function mk(a){return{id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),en:a[0]||'',ipa:a[1]||'',pos:a[2]||'',vi:a[3]||'',def:a[4]||'',ex:a[5]||'',topic:a[6]||'General',fav:0,added:Date.now(),box:-1,due:0,syn:'',ant:'',note:''}}
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&Array.isArray(d.words)){d.tp=d.tp||{order:[],hide:[],color:{}};{const m={},need=new Set();d.words.forEach(w=>{m[w.id]=w;if(!Array.isArray(w.tags)){w.tags=[];need.add(w.id)}});if(Array.isArray(d.log))d.log.forEach(x=>{const w=m[x.id];if(w&&need.has(x.id))tagSet(w,x.r)})}return d}}catch(e){}
  return{tp:{order:[],hide:[],color:{}},words:SEED.map(mk),log:[],quizzes:[],sessions:0,set:{theme:'',accent:'#111418',fs:16,sound:1,per:10}}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(KEY+'_t',Date.now());if(window.cloudDirty)window.cloudDirty()}catch(e){toast('Bộ nhớ trình duyệt đã đầy hoặc bị chặn – hãy xuất bản sao lưu.')}}
+function save(){if(window.__noSave)return;try{localStorage.setItem(KEY,JSON.stringify(S));localStorage.setItem(KEY+'_t',Date.now());if(window.cloudDirty)window.cloudDirty()}catch(e){toast('Bộ nhớ trình duyệt đã đầy hoặc bị chặn – hãy xuất bản sao lưu.')}}
 function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>t.style.display='none',2600)}
 function applySet(){const r=document.documentElement;if(S.set.theme)r.dataset.theme=S.set.theme;else delete r.dataset.theme;(S.set.accent==='#7c9a82'||S.set.accent==='#111418')?r.style.removeProperty('--ac'):r.style.setProperty('--ac',S.set.accent);r.style.setProperty('--fs',S.set.fs+'px');renderUser()}
 const dkey=t=>{const d=new Date(t);return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()};
@@ -702,7 +702,7 @@ function prev(txt,json){let rows=[];try{if(json||/^\s*[\[{]/.test(txt)){let d=JS
 function doImp(){let ok=0;IMP.forEach((r,i)=>{if($('#i'+i)?.checked){S.words.push(mk(r.a));ok++}});save();closeM();route();toast(`Đã nhập ${ok} từ, bỏ qua ${IMP.length-ok}.`)}
 function exp(t){const txt=t==='json'?JSON.stringify(S,null,1):'en,ipa,pos,vi,def,ex,topic\n'+S.words.map(w=>[w.en,w.ipa,w.pos,w.vi,w.def,w.ex,w.topic].map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(',')).join('\n');
  modal(`<h3>Xuất ${t.toUpperCase()}</h3><p class="mut">Sao chép nội dung và lưu vào file trên máy bạn.</p><textarea id="ex" rows="10" readonly>${esc(txt)}</textarea><div class="row" style="margin-top:8px"><button onclick="$('#ex').select();document.execCommand('copy');toast('Đã sao chép')">Sao chép</button><button class="g" onclick="closeM()">Đóng</button></div>`)}
-function startFC(t,m){let L=S.words.filter(w=>!t||w.topic===t);if(m==='due')L=L.filter(w=>w.box<0||w.due<=Date.now());if(['again','hard','good','fav'].includes(m)){L=L.filter(w=>has(w,m));if(!L.length){toast('Chưa có từ nào trong mục này.');return}}L=L.slice(0,S.set.per);if(!L.length){toast('Không có thẻ cần học – chọn “Học tất cả”.');L=S.words.filter(w=>!t||w.topic===t)}FC={l:L,i:0,f:0,t};S.sessions++;save();location.hash='flash';if(page==='flash')vFlash()}
+function startFC(t,m){let L=S.words.filter(w=>!t||w.topic===t);if(m==='due'){const n=Date.now();L=[...L.filter(w=>w.box>=0&&w.due<=n).sort((a,b)=>a.due-b.due),...L.filter(w=>w.box<0)]}if(['again','hard','good','fav'].includes(m)){L=L.filter(w=>has(w,m));if(!L.length){toast('Chưa có từ nào trong mục này.');return}}L=L.slice(0,S.set.per);if(!L.length){toast('Không có thẻ cần học – chọn “Học tất cả”.');L=S.words.filter(w=>!t||w.topic===t)}FC={l:L,i:0,f:0,t};S.sessions++;save();location.hash='flash';if(page==='flash')vFlash()}
 const IC={
  shuffle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="m4 4 5 5"/></svg>',
  prev:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>',
@@ -738,7 +738,7 @@ function vFlash(){if(!FC.l.length){const tp=FCT&&topics().includes(FCT)?FCT:'',a
 </div>`}
 function flip(){FC.f=!FC.f;$('#fc')?.classList.toggle('f',FC.f)}
 function mv(d){FC.i=Math.max(0,Math.min(FC.l.length,FC.i+d));FC.f=0;vFlash()}
-function rt(r){const w=FC.l[FC.i];if(!w)return;if(has(w,r)){tagTgl(w,r);save()}else rate(w,r);vFlash()}
+function rt(r){const w=FC.l[FC.i];if(!w)return;if(has(w,r)&&w.box>=0&&w.due>Date.now()){tagTgl(w,r);save()}else rate(w,r);vFlash()}
 document.addEventListener('keydown',e=>{if(page!=='flash'||!FC.l.length||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();flip()}if(e.key==='ArrowRight')mv(1);if(e.key==='ArrowLeft')mv(-1)});
 let QSRC=new Set(),QORD='rand',QLB='',QN=10;
 function qPool(){let a=S.words.filter(w=>(!QSRC.size||QSRC.has(w.topic))&&(!QLB||has(w,QLB)));a=[...a].sort(()=>Math.random()-.5);if(QORD==='weak')a.sort((x,y)=>x.box-y.box);else if(QORD==='new')a.sort((x,y)=>y.added-x.added);return a}
@@ -761,7 +761,7 @@ function startQ(l){const pool=l?null:qPool();if(!l&&pool.length<4)return toast('
    Chỉ tăng hộp khi từ đã đến hạn (tránh quiz lặp nhiều lần trong ngày làm lịch nhảy vọt);
    từ mới (chưa học) chỉ được tính khi tự gõ/điền từ, vì trắc nghiệm quá dễ đoán. */
 function qSrs(w,ok){const n=Date.now();
- if(!ok){w.box=0;w.due=n+6e5;save();return}
+ if(!ok){if(w.box<0)return;w.box=0;w.due=n+6e5;save();return}
  if(w.box<0){if(Q.t==='mc')return}else if(w.due>n)return;
  w.box=Math.min(Math.max(w.box,-1)+1,STEPS.length-1);w.due=n+STEPS[w.box]*DAY;save()}
 function ans(el,ok){if(Q.d)return;Q.d=1;const w0=Q.l[Q.i];qSrs(w0,!!ok);Q.a.push({en:w0.en,vi:w0.vi,ex:w0.ex||'',ok:!!ok,u:el.textContent});el.classList.add(ok?'ok':'no');if(ok)Q.s++;else Q.w.push(Q.l[Q.i]);nxt()}
@@ -905,7 +905,7 @@ function lGrade(){LS();const x=S.listen.find(a=>a.id===LD),u=toks($('#ltx').valu
  $('#lres').innerHTML=`<div class="card">${lResult(d)}<div class="row" style="margin-top:12px"><button onclick="$('#ltx').value='';$('#lwc').textContent='0 từ';$('#lres').innerHTML='';window.scrollTo(0,0);lReplay()">Làm lại</button></div></div>`;
  $('#lh').innerHTML=dRows(S.dict.filter(a=>a.lid===x.id).reverse());$('#lres').scrollIntoView({behavior:'smooth',block:'start'})}
 
-window.addEventListener('hashchange',route);applySet();save();route();
+window.addEventListener('hashchange',route);applySet();try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}route();
 
 /* ===== Custom dropdown (thay <select> mặc định) ===== */
 (function(){
@@ -1044,7 +1044,7 @@ async function doPull(){
  const d=JSON.parse(ds.slice(0,n).map(x=>x.data().v).join(''));
  d.user=d.user||{name:''};
  const av=ds[n],bn=ds[n+1];d.user.avatar=av.exists()?(av.data().v||''):'';d.user.banner=bn.exists()?(bn.data().v||''):'';
- localStorage.setItem(KEY,JSON.stringify(d));localStorage.setItem(TK,t);localStorage.setItem(SK,t);
+ window.__noSave=1;localStorage.setItem(KEY,JSON.stringify(d));localStorage.setItem(TK,t);localStorage.setItem(SK,t);
  toast('Đã tải dữ liệu từ đám mây');setTimeout(()=>location.reload(),400);
 }
 async function sync(){
@@ -1063,7 +1063,7 @@ async function sync(){
   if(act==='pull'){await doPull();return}
   if(act==='push')await doPush(old);
   setSt('Đã đồng bộ lúc '+hm());
- }catch(e){ok=false;console.error(e);setSt('Lỗi đồng bộ');toast('Đồng bộ lỗi: '+(e.code||e.message))}
+ }catch(e){ok=false;console.error(e);setSt('Lỗi đồng bộ');toast(e.code==='permission-denied'?'Đồng bộ lỗi: Firestore Rules đang chặn (permission-denied)':'Đồng bộ lỗi: '+(e.code||e.message))}
  finally{busy=false;ready=true;
   if(again){again=false;sync()}else if(ok&&g(TK)>g(SK)){clearTimeout(timer);timer=setTimeout(sync,2500)}}
 }
@@ -1080,7 +1080,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('#syn [data
 getRedirectResult(auth).catch(showErr);
 onAuthStateChanged(auth,u=>{user=u;ready=false;st=u?'Đang kết nối…':'';render();if(u)sync()});
 const again2=()=>{if(user&&ready&&document.visibilityState==='visible')sync()};
-document.addEventListener('visibilitychange',again2);addEventListener('online',again2);
+document.addEventListener('visibilitychange',again2);addEventListener('online',again2);addEventListener('focus',again2);
 render();
 </script>
 </body></html>
