@@ -757,8 +757,15 @@ $('#v').innerHTML=`<h2>Quiz</h2><div class="qwrap"><div class="card"><input type
  const prompt=Q.t==='blank'?(w.ex?esc(w.ex.replace(new RegExp(w.en.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'),'_____')):'_____')+`<br><small class="mut">${esc(w.vi)}</small>`:Q.t==='mc'?esc(w.en):esc(w.vi);
  $('#v').innerHTML=`<h2>Quiz <small class="mut">${Q.i+1}/${Q.l.length}</small></h2><div class="card"><div class="big" style="font-size:1.6rem;margin-bottom:12px">${prompt}</div><div id="fb">${b}</div></div>`;$('#ta')?.focus()}
 function startQ(l){const pool=l?null:qPool();if(!l&&pool.length<4)return toast('Cần ít nhất 4 từ trong nguồn đã chọn.');const t=l?Q.t:$('#qt').value,n=l?l.length:Math.max(1,parseInt($('#qn').value)||10);Q={t,l:(l||pool).slice(0,n),i:0,s:0,w:[],a:[],d:0};vQuiz()}
-function ans(el,ok){if(Q.d)return;Q.d=1;const w0=Q.l[Q.i];Q.a.push({en:w0.en,vi:w0.vi,ex:w0.ex||'',ok:!!ok,u:el.textContent});el.classList.add(ok?'ok':'no');if(ok)Q.s++;else Q.w.push(Q.l[Q.i]);nxt()}
-function tans(){if(Q.d)return;const w=Q.l[Q.i],ok=$('#ta').value.trim().toLowerCase()===w.en.toLowerCase();Q.d=1;Q.a.push({en:w.en,vi:w.vi,ex:w.ex||'',ok,u:$('#ta').value.trim()});if(ok)Q.s++;else Q.w.push(w);$('#fb').innerHTML=`<p>${ok?'Chính xác!':'Đáp án: <b>'+esc(w.en)+'</b>'}</p>`;nxt()}
+/* Quiz -> lịch ôn: sai = quay về hộp 0 (ôn lại sau 10 phút); đúng = lên hộp tiếp theo.
+   Chỉ tăng hộp khi từ đã đến hạn (tránh quiz lặp nhiều lần trong ngày làm lịch nhảy vọt);
+   từ mới (chưa học) chỉ được tính khi tự gõ/điền từ, vì trắc nghiệm quá dễ đoán. */
+function qSrs(w,ok){const n=Date.now();
+ if(!ok){w.box=0;w.due=n+6e5;save();return}
+ if(w.box<0){if(Q.t==='mc')return}else if(w.due>n)return;
+ w.box=Math.min(Math.max(w.box,-1)+1,STEPS.length-1);w.due=n+STEPS[w.box]*DAY;save()}
+function ans(el,ok){if(Q.d)return;Q.d=1;const w0=Q.l[Q.i];qSrs(w0,!!ok);Q.a.push({en:w0.en,vi:w0.vi,ex:w0.ex||'',ok:!!ok,u:el.textContent});el.classList.add(ok?'ok':'no');if(ok)Q.s++;else Q.w.push(Q.l[Q.i]);nxt()}
+function tans(){if(Q.d)return;const w=Q.l[Q.i],ok=$('#ta').value.trim().toLowerCase()===w.en.toLowerCase();Q.d=1;qSrs(w,ok);Q.a.push({en:w.en,vi:w.vi,ex:w.ex||'',ok,u:$('#ta').value.trim()});if(ok)Q.s++;else Q.w.push(w);$('#fb').innerHTML=`<p>${ok?'Chính xác!':'Đáp án: <b>'+esc(w.en)+'</b>'}</p>`;nxt()}
 function nxt(){setTimeout(()=>{Q.i++;Q.d=0;if(Q.i>=Q.l.length){S.quizzes.push({t:Date.now(),s:Q.s,n:Q.l.length,type:Q.t,d:Q.a});save()}vQuiz()},900)}
 function vStats(){const l=S.words.filter(w=>w.box>=0).length,k=S.words.filter(w=>w.box>=3).length,g=S.log.filter(x=>x.r==='good').length;
  $('#v').innerHTML=`<h2>Statistics</h2><div class="grid sg"><div class="stat"><b>${l}</b><span>Từ đã học</span></div><div class="stat"><b>${k}</b><span>Đã ghi nhớ</span></div><div class="stat"><b>${due().length}</b><span>Cần ôn</span></div><div class="stat"><b>${S.sessions}</b><span>Phiên học</span></div><div class="stat"><b>${S.log.length?Math.round(g/S.log.length*100):0}%</b><span>Tỷ lệ nhớ</span></div></div>
